@@ -5,15 +5,33 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import List, Dict, Any
 
-# --- PDF Extraction Library ---
-# We'll use PyPDF2. You must install it first:
-# pip install PyPDF2
+# --- PDF Extraction Library (PyPDF2) ---
 try:
     from PyPDF2 import PdfReader
 except ImportError:
     print("Error: PyPDF2 library not found.")
     print("Please install it by running: pip install PyPDF2")
     exit(1)
+
+# --- OCR & PDF-to-Image Libraries ---
+# These are new for the OCR field.
+# You must install them:
+# pip install pytesseract pillow pdf2image
+#
+# AND you must install the Tesseract & Poppler system packages.
+# See README.md for instructions.
+try:
+    import pytesseract
+    from PIL import Image
+    from pdf2image import convert_from_path
+
+    OCR_ENABLED = True
+except ImportError as e:
+    print(f"Warning: OCR libraries not found. OCR content will be disabled. Error: {e}")
+    print("To enable OCR, please run: pip install pytesseract pillow pdf2image")
+    print("AND install the Tesseract & Poppler system packages (see README.md).")
+    OCR_ENABLED = False
+
 
 # --- Python Data Classes for JSON Structure ---
 
@@ -27,7 +45,8 @@ class FileObject:
     filename: str
     extension: str
     type: str  # As requested, e.g., "document"
-    content: str
+    content: str  # From PyPDF2
+    content_ocr: str  # From Tesseract (OCR)
 
 
 @dataclass
@@ -65,7 +84,46 @@ def extract_pdf_content(pdf_path: str) -> str:
 
         return "\n".join(full_text)
     except Exception as e:
-        return f"Error processing PDF {pdf_path}: {e}"
+        return f"Error processing PDF {pdf_path} with PyPDF2: {e}"
+
+
+def extract_pdf_content_ocr(pdf_path: str) -> str:
+    """
+    Extracts all text content from a given PDF file using OCR
+    by converting each page to an image and running Tesseract.
+
+    Args:
+        pdf_path: The full file path to the PDF.
+
+    Returns:
+        A string containing all extracted OCR text, or an error message.
+    """
+    if not OCR_ENABLED:
+        return "OCR libraries not installed. Skipping."
+
+    if not os.path.exists(pdf_path):
+        return f"Error: File not found at {pdf_path}"
+
+    full_text = []
+    try:
+        # Convert PDF pages to a list of PIL Images
+        images = convert_from_path(pdf_path)
+
+        # Run OCR on each image
+        for i, img in enumerate(images):
+            try:
+                text = pytesseract.image_to_string(img)
+                full_text.append(f"--- Page {i + 1} ---\n{text}")
+            except pytesseract.TesseractNotFoundError:
+                return "Error: Tesseract executable not found. Please install Tesseract (see README.md)."
+            except Exception as ocr_e:
+                full_text.append(f"--- Error on Page {i + 1}: {ocr_e} ---")
+
+        return "\n".join(full_text)
+
+    except Exception as e:
+        # This broad exception can catch errors from pdf2image (e.g., Poppler not found)
+        return f"Error processing PDF {pdf_path} with OCR: {e}"
 
 
 def process_documents(csv_path: str, pdf_folder: str, output_json_path: str):
@@ -126,20 +184,25 @@ def process_documents(csv_path: str, pdf_folder: str, output_json_path: str):
                     pdf_filename = f"{base_filename}.pdf"
                     pdf_full_path = os.path.join(pdf_folder, pdf_filename)
 
-                    # 1. Extract PDF content
-                    print(f"  - Extracting content from: {pdf_full_path}")
+                    # 1. Extract PDF content (Standard)
+                    print(f"  - Extracting (PyPDF2): {pdf_full_path}")
                     pdf_content = extract_pdf_content(pdf_full_path)
 
-                    # 2. Create the FileObject
+                    # 2. Extract PDF content (OCR)
+                    print(f"  - Extracting (OCR):    {pdf_full_path}")
+                    ocr_content = extract_pdf_content_ocr(pdf_full_path)
+
+                    # 3. Create the FileObject
                     file_obj = FileObject(
                         filename=pdf_filename,
                         extension=Path(pdf_filename).suffix,
                         type="document",  # As requested
                         content=pdf_content,
+                        content_ocr=ocr_content,  # Add the new OCR field
                     )
                     file_objects_list.append(file_obj)
 
-                # 3. Create the MetadataFile object
+                # 4. Create the MetadataFile object
                 # 'row' is already the metadata dictionary
                 meta_file_obj = MetadataFile(
                     metadata=row,
@@ -147,7 +210,7 @@ def process_documents(csv_path: str, pdf_folder: str, output_json_path: str):
                 )
                 # --- MODIFICATION END ---
 
-                # 4. Append the dictionary version to our final list
+                # 5. Append the dictionary version to our final list
                 final_json_output.append(asdict(meta_file_obj))
 
     except FileNotFoundError:
