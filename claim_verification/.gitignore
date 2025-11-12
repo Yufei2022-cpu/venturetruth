@@ -1,0 +1,4 @@
+.env
+salesforce_data.csv
+sf_data_with_attachments
+verification_response.json
