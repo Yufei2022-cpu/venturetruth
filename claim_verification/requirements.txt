@@ -1,6 +1,7 @@
 langchain
 langchain-openai
+langchain-perplexity
 openai
 python-dotenv
-pypdf
 langchain-core
+perplexityai
