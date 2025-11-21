@@ -35,7 +35,7 @@ def parse_args() -> argparse.Namespace:
         "--model",
         "-m",
         type=str,
-        default="gpt-4o",
+        default="gpt-5",
         help="Model name (default: gpt-4o). You can use e.g. gpt-3.5-turbo.",
     )
     parser.add_argument(
@@ -116,8 +116,8 @@ Schema:
     {{
       "id": "C1",
       "claim": "Plain English description of the claim.",
-      "support": "direct" | "indirect" | "uncertain",
-      "source_fragment": "Short snippet from the original text (max 200 chars)"
+      "confidence": 0.0 to 1.0,
+      "evidence": "Short snippet from the original text (max 200 chars)"
     }},
     ...
   ]
@@ -126,10 +126,11 @@ Schema:
 Rules:
 - Max {max_claims} claims.
 - Use stable ids: C1, C2, C3, ...
-- "support":
-    - "direct" if the text clearly states it.
-    - "indirect" if it is a strong implication.
-    - "uncertain" if language is speculative / conditional.
+- "confidence":
+    - 1.0 for very clear and explicit statements.
+    - Around 0.7–0.9 for strong but slightly indirect statements.
+    - Below 0.7 if the language is speculative / conditional.
+- "evidence" must be copied verbatim from the original text (up to 200 characters).
 - Focus on factual claims about market size, technology performance, company information, product features, etc.
 - Extract numerical data, dates, comparisons, and specific achievements.
 - Escape quotes properly so JSON is valid.
@@ -137,6 +138,7 @@ Rules:
 TEXT:
 {text}
 """.strip()
+
 
 
 def extract_claims(
@@ -163,7 +165,7 @@ def extract_claims(
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.1,  # Low temperature for more deterministic output
+            temperature=1,  # Low temperature for more deterministic output
         )
     except Exception as e:
         sys.stderr.write(f"OpenAI API error: {e}\n")
@@ -206,7 +208,6 @@ if __name__ == "__main__":
     text_input = load_text_from_source(args.input)
     result = extract_claims(text_input, model=args.model)
 
-    # 确定输出文件名
     if args.output:
         output_file = args.output
     elif args.input:
@@ -214,11 +215,9 @@ if __name__ == "__main__":
         output_file = f"{base_name}_claims.json"
     else:
         output_file = "extracted_claims.json"
-
-    # 将结果保存到JSON文件
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
-    # 同时在控制台输出结果和保存信息
+
     print(json.dumps(result, indent=2, ensure_ascii=False))
     print(f"\nResults have been saved to: {output_file}", file=sys.stderr)
