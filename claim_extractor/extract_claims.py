@@ -203,6 +203,7 @@ def extract_claims(
     return data
 
 
+# simplest usage: python extract_claims.py --input article.txt
 if __name__ == "__main__":
     args = parse_args()
     text_input = load_text_from_source(args.input)
@@ -217,7 +218,6 @@ if __name__ == "__main__":
         output_file = "extracted_claims.json"
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
-
 
     print(json.dumps(result, indent=2, ensure_ascii=False))
     print(f"\nResults have been saved to: {output_file}", file=sys.stderr)
