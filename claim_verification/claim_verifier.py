@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
-from verification_list import VerificationList
-from claim_list import ClaimList
+from search_manager import SearchManager
+from schemes import VerificationList
+from schemes import ClaimList
 
 load_dotenv()
 
@@ -22,7 +23,8 @@ class ClaimVerifier():
         """
         self.api_key = api_key
         self.model = model
-        self.temperature = temperature        
+        self.temperature = temperature
+        self.search_manager = SearchManager() 
         
     def setup(self):
         """Perform setup of the model to verify claims
@@ -31,13 +33,13 @@ class ClaimVerifier():
         structured_verification_llm = chat_model.with_structured_output(VerificationList)
         
         verification_prompt = ChatPromptTemplate.from_messages([
-            ("system", "Verify each of the provided quotes. Provide your reasoning and the sources for the reasoning"),
-            ("human", "{claims}")
+            ("system", "Verify each of the provided quotes. For the verification only use the information provided in the 'search_results'."),
+            ("human", "{search_results}")
         ])
         
         self.verification_chain = verification_prompt |structured_verification_llm
-        
-        self.setup = True
+        self.search_manager.setup()
+        self.is_setup = True
     
     def verify_claims(self, claims):
         """Performs claim verification
@@ -48,12 +50,14 @@ class ClaimVerifier():
         Returns:
             VerificationList: List with the verification results for each claim
         """
-        if not self.setup:
+        if not self.is_setup:
             print(f"Please setup the Claim Verifier first")
             return
         
+        search_results = self.search_manager.perform_search(claims)
+        
         verification_response = self.verification_chain.invoke({
-            "claims": claims
+            "search_results": search_results
         })
         
         return verification_response
@@ -65,9 +69,8 @@ class ClaimVerifier():
         claims = ClaimList.model_validate(data)
         
         return claims
-            
     
-    def store_as_json(self, verified_claims, path="verification_response.json"):
+    def store_as_json(self, verified_claims, path="res/verification_response.json"):
         """_summary_
 
         Args:
@@ -91,7 +94,7 @@ def main():
     claim_verifier.setup()
     
     # Load extracted claims 
-    claims = claim_verifier.load_claims(os.path.join(os.path.dirname(__file__), "claims.json"))
+    claims = claim_verifier.load_claims(os.path.join(os.path.dirname(__file__), "res/claims.json"))
     
     # Run claim verification
     verification_results = claim_verifier.verify_claims(claims)
