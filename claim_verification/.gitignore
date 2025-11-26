@@ -1,6 +1,5 @@
 .env
 salesforce_data.csv
 sf_data_with_attachments
-verification_response.json
 __pycache__
-claims.json
+*.json
