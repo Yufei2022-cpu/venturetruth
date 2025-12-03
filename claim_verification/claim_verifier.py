@@ -6,9 +6,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
 from search_manager import SearchManager
-from schemes import VerificationList
-from schemes import ClaimList
-
+from schemes import VerificationList, ClaimList
 load_dotenv()
 
 class ClaimVerifier():
@@ -33,13 +31,35 @@ class ClaimVerifier():
         structured_verification_llm = chat_model.with_structured_output(VerificationList)
         
         verification_prompt = ChatPromptTemplate.from_messages([
-            ("system", "Verify each of the provided quotes. For the verification only use the information provided in the 'search_results'."),
+            ("system", "You are claims verification expert."),
             ("human", "{search_results}")
         ])
         
         self.verification_chain = verification_prompt |structured_verification_llm
         self.search_manager.setup()
         self.is_setup = True
+    
+    def build_prompt(self, claims):
+        claims = claims.model_dump_json()
+        
+        claims = json.loads(claims)
+        
+        return f"""TASK:
+Verify each of the provided claims.
+
+CLAIMS:
+{claims}
+
+Rules:
+1. To verify claims use only the sources that were provided for them.
+2. If you are not clearly certain, answer INSUFFICIENT_EVIDENCE.
+3. Do not guess financial numbers, dates, and any internal company information.
+4. Do not fabricate sources. If no sources are provided for the claim, then it cannot be verified.
+5. Be conservative: incorrect SUPPORT is worse than saying "I do not know".
+6. You will be provided with the list of claims
+7. Process them one by one
+8. When filling resulting sources, use only those you used from the sources of the claim.
+""".strip()
     
     def verify_claims(self, claims):
         """Performs claim verification
@@ -55,6 +75,8 @@ class ClaimVerifier():
             return
         
         search_results = self.search_manager.perform_search(claims)
+        
+        search_results = self.build_prompt(search_results)
         
         verification_response = self.verification_chain.invoke({
             "search_results": search_results
