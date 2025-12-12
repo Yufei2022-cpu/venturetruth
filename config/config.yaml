@@ -1,0 +1,16 @@
+claim_extractor:
+  model: "gpt-4o"
+  max_claims: 30
+  temperature: 0
+  output_path: "res/claims.json"
+
+claim_verifier:
+  model: "gpt-4o"
+  temperature: 0
+  output_path: "res/verification_result.json"
+
+file_content_extractor:
+  csv_path: "res/salesforce_data.csv"
+  pdf_folder: "res/sf_data_with_attachments"
+  output_path: "res/output.json"
+  limit: 1

@@ -5,8 +5,9 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
-from search_manager import SearchManager
-from schemes import VerificationList, ClaimList
+from claim_verification.search_manager import SearchManager
+from common.schemes import VerificationList, ClaimsResponse
+
 load_dotenv()
 
 class ClaimVerifier():
@@ -88,7 +89,7 @@ Rules:
         with open(path, "r") as f:
             data = json.load(f)
             
-        claims = ClaimList.model_validate(data)
+        claims = ClaimsResponse.model_validate(data)
         
         return claims
     

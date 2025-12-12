@@ -1,22 +1,16 @@
-"""
-Prompt templates for claim extraction.
-"""
+class PromptBuilder:
+    def build_claims_prompt(self, text: str, max_claims: int = 30) -> str:
+        """
+        Build the prompt for claim extraction.
 
-from typing import Dict, Any
+        Args:
+            text: Input text to analyze
+            max_claims: Maximum number of claims to extract
 
-
-def build_claims_prompt(text: str, max_claims: int = 30) -> str:
-    """
-    Build the prompt for claim extraction.
-
-    Args:
-        text: Input text to analyze
-        max_claims: Maximum number of claims to extract
-
-    Returns:
-        Formatted prompt string
-    """
-    return f"""
+        Returns:
+            Formatted prompt string
+        """
+        return f"""
 You are an information extraction system.
 
 TASK:
@@ -66,10 +60,3 @@ Rules:
 TEXT:
 {text}
 """.strip()
-
-
-# Alternative prompt templates can be added here
-PROMPT_TEMPLATES = {
-    "default": build_claims_prompt,
-    # Add more templates as needed
-}

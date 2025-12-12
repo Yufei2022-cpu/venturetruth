@@ -1,5 +1,5 @@
 """
-Utility functions for claim extraction.
+Utility functions
 """
 
 import os
@@ -83,8 +83,12 @@ def save_output(data: dict, output_path: Optional[str] = None,
         final_output_path = f"{base_name}_claims.json"
     else:
         final_output_path = "extracted_claims.json"
+        
+    data = data.model_dump_json()
+    
+    data = json.loads(data)
 
     with open(final_output_path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
     return final_output_path

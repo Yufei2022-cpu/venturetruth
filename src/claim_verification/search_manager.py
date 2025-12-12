@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from langchain_perplexity import ChatPerplexity
 from langchain_core.prompts import ChatPromptTemplate
 
-from schemes import SearchResultsList, SearchResults, ClaimList
+from common.schemes import SearchResultsList, SearchResults, ClaimsResponse
 
 load_dotenv()
 
@@ -77,7 +77,7 @@ class SearchManager:
         with open(path, "r") as f:
             data = json.load(f)
             
-        claims = ClaimList.model_validate(data)
+        claims = ClaimsResponse.model_validate(data)
         
         return claims
     
