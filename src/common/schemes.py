@@ -44,7 +44,7 @@ class Verdict(Enum):
     INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
     
 class VerificationResult(BaseModel):
-    claim_id: int = Field(description="The ID of the claim that is verified")
+    claim_id: str = Field(description="The ID of the claim that is verified")
     verdict: Verdict = Field(description="Specifies whether the claim is supported, refuted, or there is insufficient evidence")
     confidence: float = Field(description="Number specifies how confident you are the verdict. The value ranges from 0 to 1 with at most 2 digits after the coma.")
     reasoning: str = Field(description="Explanation for your verdict. 2-4 sentences")

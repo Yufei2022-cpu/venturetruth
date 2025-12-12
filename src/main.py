@@ -58,10 +58,6 @@ def main():
     # Load the Information & perform claim extraction and verificcation
     for _, item in enumerate(data_loader):
         claims = claim_extractor.extract_claims(item)
-
-        print(claims)
-        
-        save_output(claims)
         
         verification_response = claim_verifier.verify_claims(claims)
         

@@ -46,7 +46,8 @@ class SearchManager:
                 "2. In the 'sources' list, you MUST provide the FULL URL strings (starting with http/https).\n"
                 "3. DO NOT use citation numbers like '[1]' in the 'sources' list.\n"
                 "4. Be extremely brief.\n"
-                "5. LIMIT the 'sources' list to a MAXIMUM of 5 URLs."
+                "5. LIMIT the 'sources' list to a MAXIMUM of 5 URLs.\n"
+                "6. The evidence string MUST be under 200 characters long. Summarize if necessary."
             )),
             ("human", "{claim_text}")
         ])
