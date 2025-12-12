@@ -7,7 +7,6 @@ from claim_verification.claim_verifier import ClaimVerifier
 from claim_extractor.claim_extractor import ClaimExtractor
 from file_content_extraction.ingestion_pipeline import IngestionPipeline
 from file_content_extraction.data_loader import DataLoader
-from utils.utils import save_output
 
 CONFIG_PATH = "config/config.yaml"
 
