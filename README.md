@@ -18,11 +18,11 @@ The key functionality is following:
 * Custom data loader for the extracted information 
 
 ### Configuration
-The configuration for the **File Content Extraction** can be found in the `config/config.json` in the `file_content_extractor` section.
+The configuration for the **File Content Extraction** can be found in the `config/config.yaml` in the `file_content_extractor` section.
 
-Currently, following configarations are available:
+Currently, following configurations are available:
 * `csv_path`: path to the CSV file that stores infomation about the companies and the documents associated with them
-* `pdf_folder`: path to the folder where the documents accosicated with companies are stored
+* `pdf_folder`: path to the folder where the documents associated with companies are stored
 * `output_path`: path where to store the extracted information
 * `limit`: maximal amount of companies which information is extracted
 
@@ -98,11 +98,11 @@ Claim Extractor is a Python module designed to extract factual claims from text 
 
 ### Configuration
 
-The configuration for the **Claim Extraction** can be found in the `config/config.json` in the `claim_extractor` section.
+The configuration for the **Claim Extraction** can be found in the `config/config.yaml` in the `claim_extractor` section.
 
 Currently, following configurations are available:
 * `model`: name of the Open AI model that should be used to extract claims
-* `max_claims`: manimum number of claims to extract 
+* `max_claims`: maximum number of claims to extract 
 * `temperature`: temperature values that the model should use
 * `output_path`: path where to store the claims
 
@@ -146,7 +146,7 @@ Claim Verification is a Python module designed to verify factual claims from tex
 
 ### Configuration
 
-The configuration for the **Claim Verification** can be found in the `config/config.json` in the `claim_verifier` section.
+The configuration for the **Claim Verification** can be found in the `config/config.yaml` in the `claim_verifier` section.
 
 Currently, following configurations are available:
 * `model`: name of the Open AI model that should be used to extract claims

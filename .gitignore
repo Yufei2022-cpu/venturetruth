@@ -1,8 +1,17 @@
+# Environment variables (sensitive)
+.env
+
+# Output files
 file_content_extraction/output.json
 output.json
 salesforce_data.csv
 verification_response.json
 sf_data_with_attachments
 *.json
+
+# Python
 *.egg-info
 *__pycache__
+
+# IDEs
+.idea

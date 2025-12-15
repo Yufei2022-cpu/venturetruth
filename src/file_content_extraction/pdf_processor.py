@@ -88,7 +88,7 @@ class PDFProcessor:
                 content_ocr=error_msg
             )
             
-        print(f"Proceesing: {filename}...")
+        print(f"Processing: {filename}...")
         std_content = self.std_extractor.extract(full_path)
         ocr_content = self.ocr_extractor.extract(full_path)
         
