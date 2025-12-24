@@ -38,14 +38,14 @@ class SearchResults(BaseModel):
 class SearchResultsList(BaseModel):
     search_results_list: list[SearchResults] = Field(description="List of all search results")
 
-class Verdict(Enum):
+class Verdict(str, Enum):
     SUPPORTED = "SUPPORTED"
-    REFUTED = "REFUTED"
+    CONTRADICTED = "CONTRADICTED"
     INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
     
 class VerificationResult(BaseModel):
     claim_id: str = Field(description="The ID of the claim that is verified")
-    verdict: Verdict = Field(description="Specifies whether the claim is supported, refuted, or there is insufficient evidence")
+    verdict: Verdict = Field(description="Specifies whether the claim is SUPPORTED, CONTRADICTED, or INSUFFICIENT_EVIDENCE")
     confidence: float = Field(description="Number specifies how confident you are the verdict. The value ranges from 0 to 1 with at most 2 digits after the coma.")
     reasoning: str = Field(description="Explanation for your verdict. 2-4 sentences")
     sources: list[str] = Field(description="List of the URL sources used to support the reasoning")
