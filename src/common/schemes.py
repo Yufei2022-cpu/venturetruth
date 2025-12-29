@@ -52,3 +52,31 @@ class VerificationResult(BaseModel):
     
 class VerificationList(BaseModel):
     verification_results: list[VerificationResult] = Field(description="List of the verification results")
+
+class Evidence(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+        str_strip_whitespace=True,
+        validate_assignment=True
+    )
+
+    id: str = Field(..., description="Unique evidence identifier (e.g., E1, E2)")
+    file_name: str = Field(..., description="File name of the evidence document")
+    page_number: int = Field(..., description="Page number of the evidence document")
+    evidence: str = Field(..., max_length=200, description="Short snippet from original text")
+
+class ClaimEvidence(BaseModel):
+    id: str = Field(..., description="Unique claim identifier (e.g., C1, C2)")
+    claim: str = Field(..., description="Claim for which the evidence is provided")
+    evidence: Evidence = Field(description="Evidence for the provided claim")
+
+class FilteredClaims(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    claims: List[ClaimEvidence] = Field(default_factory=list, description="List of filtered claims")
+
+    def to_dict(self) -> dict:
+        return self.model_dump()
+
+    def to_json(self, **kwargs) -> str:
+        return self.model_dump_json(**kwargs)
