@@ -12,7 +12,7 @@ load_dotenv()
 
 class ClaimVerifier():
     
-    def __init__(self, api_key, model="gpt-4o", temperature=0):
+    def __init__(self, api_key, model="gpt-5.2", temperature=0):
         """Class constructor
 
         Args:
@@ -103,6 +103,9 @@ Rules:
         verified_claims_json = verified_claims.model_dump_json()
         
         verified_claims_dictionary = json.loads(verified_claims_json)
+        
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         
         with open(path, "w") as f:
             json.dump(verified_claims_dictionary, f, indent=4)

@@ -62,15 +62,21 @@ class SearchManager:
             return
         
         results = []
+        total_claims = len(claims.claims)
+        print(f"\n🔍 Starting search for {total_claims} claims...")
         
-        for claim in claims.claims:
+        for idx, claim in enumerate(claims.claims, 1):
+            print(f"  [{idx}/{total_claims}] Searching for claim {claim.id}: {claim.claim[:80]}...")
+            
             verification_response = self.verification_chain.invoke({
                 "claim_text": claim
             })
             
             results.append(verification_response)
+            print(f"  ✓ Completed {claim.id}")
             
         search_results_list = SearchResultsList(search_results_list=results)
+        print(f"✅ Search completed for all {total_claims} claims!\n")
         
         return search_results_list
     

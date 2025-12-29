@@ -1,15 +1,16 @@
 import sys
 import json
+import os
 
 from openai import OpenAI
 
-from src.claim_extractor.prompt_builder import PromptBuilder
+from claim_extractor.prompt_builder import PromptBuilder
 from utils.utils import extract_json_from_markdown
 from common.schemes import ClaimsResponse, FilteredClaims
 
 class ClaimExtractor:
     
-    def __init__(self, api_key, model="gpt-4o", temperature=0, max_claims=30):
+    def __init__(self, api_key, model="gpt-5.2", temperature=0, max_claims=30):
         self.api_key = api_key
         self.model = model
         self.temperature = temperature
@@ -99,3 +100,19 @@ class ClaimExtractor:
             sys.exit(1)
 
         return claims_filtered
+    
+    def store_as_json(self, claims, path="res/claims.json"):
+        """Store extracted claims as JSON
+        
+        Args:
+            claims (ClaimsResponse): The claims to store
+            path (str, optional): Path where to store the claims. Defaults to "res/claims.json".
+        """
+        claims_json = claims.model_dump_json()
+        claims_dict = json.loads(claims_json)
+        
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        with open(path, "w") as f:
+            json.dump(claims_dict, f, indent=4)
