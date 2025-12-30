@@ -70,8 +70,9 @@ def main():
     print("📋 Stage 2: Claim Extraction & Verification")
     print("="*60)
     
-    # Collect all company reports
+    # Collect all company reports and search results
     all_company_reports = []
+    all_search_results = []
     
     for idx, item in enumerate(data_loader, 1):
         print(f"\n--- Processing company {idx} ---")
@@ -90,7 +91,13 @@ def main():
         )
         
         print(f"🔎 Verifying claims...")
-        verification_response = claim_verifier.verify_claims(claims)
+        verification_response, search_results = claim_verifier.verify_claims(claims)
+        
+        # Collect search results for quality analysis
+        all_search_results.append({
+            "company": company_name,
+            "search_results": search_results.model_dump() if search_results else None
+        })
         
         print(f"💾 Saving verification results...")
         claim_verifier.store_as_json(
@@ -172,6 +179,51 @@ def main():
     print(f"   🚨 High Risk: {total_high_risk}")
     print(f"   Evidence Breakdown: {overall_evidence}")
     print(f"\n📄 Final multi-company report saved to: res/final_report.json")
+    
+    # Stage 3: Quality Assessment
+    print("\n" + "="*60)
+    print("🔍 Stage 3: Verification Quality Assessment")
+    print("="*60)
+    
+    from quality_checker.quality_checker import QualityChecker
+    
+    quality_checker = QualityChecker(
+        api_key=api_key,
+        model=config['quality_checker']['model'],
+        temperature=config['quality_checker']['temperature']
+    )
+    quality_checker.setup()
+    
+    print("📊 Analyzing verification quality...")
+    quality_report, search_quality_summary = quality_checker.check_quality(
+        report_path=final_report_path,
+        search_results=all_search_results
+    )
+    
+    # Save quality report with search quality summary
+    quality_output_path = str(PROJECT_ROOT / config['quality_checker']['output_path'])
+    quality_checker.store_as_json(quality_report, quality_output_path, search_quality_summary)
+    
+    # Print quality summary
+    print("\n📈 Quality Assessment Results:")
+    print(f"   Overall Score: {quality_report.overall_quality_score:.2f}")
+    print(f"   Overall Rating: {quality_report.overall_rating.value.upper()}")
+    print(f"   Critical Issues: {quality_report.critical_issues_count}")
+    
+    # Print search quality if available
+    if search_quality_summary:
+        print(f"\n🔍 Search Quality:")
+        print(f"   Total Searches: {search_quality_summary.get('total_searches', 0)}")
+        print(f"   Good Rate: {search_quality_summary.get('good_rate', 0):.0%}")
+        print(f"   Failed Rate: {search_quality_summary.get('failed_rate', 0):.0%}")
+        print(f"   Off-Topic Rate: {search_quality_summary.get('off_topic_rate', 0):.0%}")
+    
+    if quality_report.top_issues:
+        print("\n🔴 Top Issues to Address:")
+        for i, issue in enumerate(quality_report.top_issues[:3], 1):
+            print(f"   {i}. {issue}")
+    
+    print(f"\n📄 Quality report saved to: {config['quality_checker']['output_path']}")
     
 
 if __name__ == "__main__":

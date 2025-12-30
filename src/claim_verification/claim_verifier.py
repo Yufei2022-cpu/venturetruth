@@ -32,13 +32,44 @@ class ClaimVerifier():
         structured_verification_llm = chat_model.with_structured_output(VerificationList)
         
         verification_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are claims verification expert."),
+            ("system", self._get_system_prompt()),
             ("human", "{search_results}")
         ])
         
-        self.verification_chain = verification_prompt |structured_verification_llm
+        self.verification_chain = verification_prompt | structured_verification_llm
         self.search_manager.setup()
         self.is_setup = True
+    
+    def _get_system_prompt(self):
+        """Return the system prompt for claim verification"""
+        return """You are an expert claim verification analyst with deep expertise in due diligence and fact-checking.
+
+Your task is to verify claims with rigorous attention to evidence quality and proper confidence calibration.
+
+CRITICAL CONFIDENCE CALIBRATION RULES:
+
+1. INSUFFICIENT_EVIDENCE verdicts MUST have LOW confidence (0.3-0.5 max):
+   - If search was incomplete or misdirected → confidence ≤ 0.4
+   - If no relevant sources found → confidence ≤ 0.3
+   - Never give high confidence when you lack evidence to verify
+
+2. SOURCE INDEPENDENCE requirement for high confidence:
+   - confidence > 0.8 requires 2+ INDEPENDENT primary sources
+   - If sources cite each other or share the same origin → cap confidence at 0.7
+   - Press releases, company websites are NOT independent of company claims
+   - Industry reports, regulatory filings, third-party research are independent
+
+3. INTERNAL DOCUMENT references (pitch decks, product taglines, company materials):
+   - Claims from internal documents CANNOT be externally verified
+   - Mark as INSUFFICIENT_EVIDENCE with confidence ≤ 0.4
+   - Explicitly note in reasoning: "Claim references internal company materials that cannot be independently verified"
+
+VERDICT GUIDELINES:
+- SUPPORTED: Multiple independent sources confirm the claim (confidence 0.7-0.95)
+- CONTRADICTED: Credible sources directly contradict the claim (confidence based on source quality)
+- INSUFFICIENT_EVIDENCE: Cannot verify due to lack of sources, incomplete search, or internal-only references
+
+Be conservative. Overconfidence is worse than acknowledging uncertainty."""
     
     def build_prompt(self, claims):
         claims = claims.model_dump_json()
@@ -46,21 +77,39 @@ class ClaimVerifier():
         claims = json.loads(claims)
         
         return f"""TASK:
-Verify each of the provided claims.
+Verify each of the provided claims with careful attention to confidence calibration.
 
 CLAIMS:
 {claims}
 
-Rules:
-1. To verify claims use only the sources that were provided for them.
-2. If you are not clearly certain, answer INSUFFICIENT_EVIDENCE.
-3. Do not guess financial numbers, dates, and any internal company information.
-4. Do not fabricate sources. If no sources are provided for the claim, then it cannot be verified.
-5. Be conservative: incorrect SUPPORT is worse than saying "I do not know".
-6. You will be provided with the list of claims
-7. Process them one by one
-8. When filling resulting sources, use only those you used from the sources of the claim.
-""".strip()
+VERIFICATION RULES:
+
+1. Use ONLY the sources provided for each claim.
+
+2. CONFIDENCE CALIBRATION (CRITICAL):
+   - INSUFFICIENT_EVIDENCE → confidence MUST be 0.3-0.5 (never higher)
+   - Single source only → confidence ≤ 0.7
+   - Sources not independent (cite each other) → confidence ≤ 0.7
+   - Multiple independent sources agree → confidence 0.75-0.9
+   - Reserve 0.9+ for claims with 3+ high-quality independent sources
+
+3. INTERNAL DOCUMENT DETECTION:
+   - If claim references pitch deck content, product taglines, internal metrics, or company-specific terminology
+   - Mark as INSUFFICIENT_EVIDENCE with confidence ≤ 0.4
+   - State in reasoning: "This claim references internal company materials and cannot be independently verified"
+
+4. SOURCE INDEPENDENCE CHECK:
+   - Before giving confidence > 0.7, verify sources are truly independent
+   - Company press releases, company website, founder interviews = NOT independent
+   - Regulatory filings, third-party research, established news with original reporting = independent
+
+5. Do NOT guess financial numbers, dates, or proprietary information.
+
+6. Do NOT fabricate sources. No sources = INSUFFICIENT_EVIDENCE (confidence 0.3).
+
+7. When uncertain, always choose INSUFFICIENT_EVIDENCE over incorrect SUPPORTED.
+
+Process each claim one by one with these calibration rules in mind.""".strip()
     
     def verify_claims(self, claims):
         """Performs claim verification
@@ -73,17 +122,18 @@ Rules:
         """
         if not self.is_setup:
             print(f"Please setup the Claim Verifier first")
-            return
+            return None, None
         
-        search_results = self.search_manager.perform_search(claims)
+        search_results_raw = self.search_manager.perform_search(claims)
         
-        search_results = self.build_prompt(search_results)
+        search_results_prompt = self.build_prompt(search_results_raw)
         
         verification_response = self.verification_chain.invoke({
-            "search_results": search_results
+            "search_results": search_results_prompt
         })
         
-        return verification_response
+        # Return both verification and raw search results for quality analysis
+        return verification_response, search_results_raw
     
     def load_claims(self, path):
         with open(path, "r") as f:

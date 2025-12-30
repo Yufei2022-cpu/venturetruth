@@ -30,13 +30,26 @@ class ClaimsResponse(BaseModel):
         """Convert to JSON string."""
         return self.model_dump_json(**kwargs)
     
+class SourceDetail(BaseModel):
+    """Detailed information about a single source"""
+    url: str = Field(description="Full URL of the source")
+    relevance: str = Field(description="HIGH, MEDIUM, LOW, or OFF_TOPIC")
+    excerpt: str | None = Field(None, description="Relevant excerpt from this source, or null if not found")
+    not_found_reason: str | None = Field(None, description="If no relevant info found, explain why")
+
 class SearchResults(BaseModel):
     claim: Claim = Field(description="Claim for which the search results are provided")
-    search_results: str = Field(description="Results of the internet search")
-    sources: list[str] = Field(description="Sources for the provided search results")
+    search_query: str = Field(description="The exact search query used to find evidence")
+    entity_identified: str = Field(description="The company/entity name identified for targeted search")
+    search_results: str = Field(description="Summary of search findings (under 100 words)")
+    source_details: list[SourceDetail] = Field(description="Detailed per-source findings")
+    sources: list[str] = Field(description="List of relevant source URLs only")
+    search_quality: str = Field(description="GOOD, PARTIAL, or FAILED - overall search quality assessment")
+    search_notes: str | None = Field(None, description="Notes on search limitations or issues encountered")
     
 class SearchResultsList(BaseModel):
     search_results_list: list[SearchResults] = Field(description="List of all search results")
+
 
 class Verdict(str, Enum):
     SUPPORTED = "SUPPORTED"
