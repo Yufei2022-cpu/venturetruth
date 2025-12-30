@@ -156,3 +156,16 @@ class IntegratedReport(BaseModel):
     
     def to_json(self, **kwargs) -> str:
         return self.model_dump_json(**kwargs)
+
+class MultiCompanyReport(BaseModel):
+    """Aggregated report for multiple companies"""
+    processed_at: str = Field(description="ISO timestamp of batch processing")
+    total_companies: int = Field(ge=0, description="Total number of companies processed")
+    overall_summary: ResultSummary = Field(description="Aggregated statistics across all companies")
+    companies: List[IntegratedReport] = Field(default_factory=list, description="Individual company reports")
+    
+    def to_dict(self) -> dict:
+        return self.model_dump()
+    
+    def to_json(self, **kwargs) -> str:
+        return self.model_dump_json(**kwargs)
