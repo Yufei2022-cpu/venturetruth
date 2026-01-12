@@ -112,18 +112,29 @@ VERIFICATION RULES:
 
 Process each claim one by one with these calibration rules in mind.""".strip()
     
-    def build_correction_prompt(self, claims, quality_report: QualityReport):
+    def build_prompt_with_improvements(self, claims, quality_report: QualityReport | None = None):
         claims = claims.model_dump_json()
         
         claims = json.loads(claims)
 
-        top_issues = quality_report.top_issues
-        systemic_issues = quality_report.systemic_issues
-        recommended_actions = quality_report.recommended_actions
+        top_issues = ""
+        systemic_issues = ""
+        recommended_actions = ""
+        suggested_improvements = "None"
+
+        if quality_report is not None:
+            top_issues = quality_report.top_issues
+            systemic_issues = quality_report.systemic_issues
+            recommended_actions = quality_report.recommended_actions
+            suggested_improvements = "The suggested improvements are in the top issues, systemic issues, and recommended actions."
         
         return f"""TASK:
 Verify each of the provided claims with careful attention to confidence calibration. 
-And make corrections based on the quality report from the last round. Make the estimations more accurate and percise.
+And make corrections based on the suggested improvements from the quality report from the last round. 
+Make the estimations more accurate and percise. If there are no improvements, you just ignore the
+top issues,systemic issues and recommended actions.
+
+Suggested Improvements: {suggested_improvements}
 
 TOP ISSUES:
 {top_issues}
@@ -216,7 +227,7 @@ Process each claim one by one with these calibration rules in mind.
         with open(path, "w") as f:
             json.dump(verified_claims_dictionary, f, indent=4)
 
-    def verify_claims_correction(self, claims, quality_report: QualityReport):
+    def verify_claims_with_improvements(self, claims, quality_report: QualityReport | None = None):
         """
         Using the top_issues, systemic_issues, and quality_report, make corrections to the claims verification.
 
@@ -230,10 +241,10 @@ Process each claim one by one with these calibration rules in mind.
         
         search_results_raw = self.search_manager.perform_search(claims)
         
-        search_results_correction_prompt = self.build_correction_prompt(search_results_raw)
+        search_results_prompt_improvements = self.build_prompt_with_improvements(search_results_raw, quality_report)
         
         verification_response = self.verification_chain.invoke({
-            "search_results": search_results_correction_prompt
+            "search_results": search_results_prompt_improvements
         })
         
         # Return both verification and raw search results for quality analysis
