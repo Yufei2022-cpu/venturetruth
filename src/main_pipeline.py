@@ -270,10 +270,10 @@ def quality_assessment(all_search_results, final_report_path):
 
 def main_pipeline():
     MAX_ROUNDS = 3
+    ingestion_pipeline()
+    claim_extraction()
     for i in range(MAX_ROUNDS):
         print(f"🚀 Starting Round {i+1}...")
-        all_search_results = ingestion_pipeline()
-        claim_extraction()
         all_search_results, all_company_reports = claim_verification()
         final_report_path = summary_verifications(all_company_reports)
         quality_output_path = quality_assessment(all_search_results, final_report_path)
