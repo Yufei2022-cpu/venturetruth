@@ -30,12 +30,29 @@ class ClaimsResponse(BaseModel):
         """Convert to JSON string."""
         return self.model_dump_json(**kwargs)
     
+class SourceType(str, Enum):
+    """Classification of source types"""
+    NEWS = "news"
+    OFFICIAL = "official"  # Company website, press release
+    REGULATORY = "regulatory"  # SEC filings, government
+    INDUSTRY = "industry"  # Industry reports, analyst
+    SOCIAL = "social"  # Social media, forums
+    OTHER = "other"
+
 class SourceDetail(BaseModel):
     """Detailed information about a single source"""
     url: str = Field(description="Full URL of the source")
     relevance: str = Field(description="HIGH, MEDIUM, LOW, or OFF_TOPIC")
+    source_type: SourceType | None = Field(None, description="Type of source: news, official, regulatory, industry, social, other")
     excerpt: str | None = Field(None, description="Relevant excerpt from this source, or null if not found")
     not_found_reason: str | None = Field(None, description="If no relevant info found, explain why")
+
+class SearchQuality(str, Enum):
+    """Search quality assessment levels"""
+    EXCELLENT = "EXCELLENT"
+    GOOD = "GOOD"
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
 
 class SearchResults(BaseModel):
     claim: Claim = Field(description="Claim for which the search results are provided")
@@ -44,8 +61,12 @@ class SearchResults(BaseModel):
     search_results: str = Field(description="Summary of search findings (under 100 words)")
     source_details: list[SourceDetail] = Field(description="Detailed per-source findings")
     sources: list[str] = Field(description="List of relevant source URLs only")
-    search_quality: str = Field(description="GOOD, PARTIAL, or FAILED - overall search quality assessment")
+    search_quality: SearchQuality = Field(description="EXCELLENT, GOOD, PARTIAL, or FAILED - overall search quality assessment")
     search_notes: str | None = Field(None, description="Notes on search limitations or issues encountered")
+    # Enhanced fields
+    unique_domains: int = Field(default=0, description="Number of unique domains in sources")
+    source_type_breakdown: dict[str, int] = Field(default_factory=dict, description="Count of sources by type")
+    retry_count: int = Field(default=0, description="Number of search retries attempted")
     
 class SearchResultsList(BaseModel):
     search_results_list: list[SearchResults] = Field(description="List of all search results")
@@ -59,7 +80,7 @@ class Verdict(str, Enum):
 class VerificationResult(BaseModel):
     claim_id: str = Field(description="The ID of the claim that is verified")
     verdict: Verdict = Field(description="Specifies whether the claim is SUPPORTED, CONTRADICTED, or INSUFFICIENT_EVIDENCE")
-    confidence: float = Field(description="Number specifies how confident you are the verdict. The value ranges from 0 to 1 with at most 2 digits after the coma.")
+    certainty: float = Field(description="How certain the model is about this verdict (0.0 to 1.0). Higher values indicate stronger evidence.")
     reasoning: str = Field(description="Explanation for your verdict. 2-4 sentences")
     sources: list[str] = Field(description="List of the URL sources used to support the reasoning")
     
@@ -124,7 +145,7 @@ class ClaimCategory(str, Enum):
 class EnhancedVerification(BaseModel):
     """Enhanced verification result with evidence type classification"""
     verdict: Verdict = Field(description="SUPPORTED, CONTRADICTED, or INSUFFICIENT_EVIDENCE")
-    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score from 0.0 to 1.0")
+    certainty: float = Field(ge=0.0, le=1.0, description="How certain the model is about this verdict (0.0 to 1.0)")
     reasoning: str = Field(description="Explanation for the verdict")
     evidence_type: EvidenceType = Field(description="Type of evidence found")
     source_count: int = Field(ge=0, description="Number of sources found")

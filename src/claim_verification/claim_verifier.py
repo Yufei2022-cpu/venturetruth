@@ -45,29 +45,29 @@ class ClaimVerifier():
         """Return the system prompt for claim verification"""
         return """You are an expert claim verification analyst with deep expertise in due diligence and fact-checking.
 
-Your task is to verify claims with rigorous attention to evidence quality and proper confidence calibration.
+Your task is to verify claims with rigorous attention to evidence quality and proper certainty calibration.
 
-CRITICAL CONFIDENCE CALIBRATION RULES:
+CRITICAL CERTAINTY CALIBRATION RULES:
 
-1. INSUFFICIENT_EVIDENCE verdicts MUST have LOW confidence (0.3-0.5 max):
-   - If search was incomplete or misdirected → confidence ≤ 0.4
-   - If no relevant sources found → confidence ≤ 0.3
-   - Never give high confidence when you lack evidence to verify
+1. INSUFFICIENT_EVIDENCE verdicts MUST have LOW certainty (0.3-0.5 max):
+   - If search was incomplete or misdirected → certainty ≤ 0.4
+   - If no relevant sources found → certainty ≤ 0.3
+   - Never give high certainty when you lack evidence to verify
 
-2. SOURCE INDEPENDENCE requirement for high confidence:
-   - confidence > 0.8 requires 2+ INDEPENDENT primary sources
-   - If sources cite each other or share the same origin → cap confidence at 0.7
+2. SOURCE INDEPENDENCE requirement for high certainty:
+   - certainty > 0.8 requires 2+ INDEPENDENT primary sources
+   - If sources cite each other or share the same origin → cap certainty at 0.7
    - Press releases, company websites are NOT independent of company claims
    - Industry reports, regulatory filings, third-party research are independent
 
 3. INTERNAL DOCUMENT references (pitch decks, product taglines, company materials):
    - Claims from internal documents CANNOT be externally verified
-   - Mark as INSUFFICIENT_EVIDENCE with confidence ≤ 0.4
+   - Mark as INSUFFICIENT_EVIDENCE with certainty ≤ 0.4
    - Explicitly note in reasoning: "Claim references internal company materials that cannot be independently verified"
 
 VERDICT GUIDELINES:
-- SUPPORTED: Multiple independent sources confirm the claim (confidence 0.7-0.95)
-- CONTRADICTED: Credible sources directly contradict the claim (confidence based on source quality)
+- SUPPORTED: Multiple independent sources confirm the claim (certainty 0.7-0.95)
+- CONTRADICTED: Credible sources directly contradict the claim (certainty based on source quality)
 - INSUFFICIENT_EVIDENCE: Cannot verify due to lack of sources, incomplete search, or internal-only references
 
 Be conservative. Overconfidence is worse than acknowledging uncertainty."""
@@ -78,7 +78,7 @@ Be conservative. Overconfidence is worse than acknowledging uncertainty."""
         claims = json.loads(claims)
         
         return f"""TASK:
-Verify each of the provided claims with careful attention to confidence calibration.
+Verify each of the provided claims with careful attention to certainty calibration.
 
 CLAIMS:
 {claims}
@@ -87,26 +87,26 @@ VERIFICATION RULES:
 
 1. Use ONLY the sources provided for each claim.
 
-2. CONFIDENCE CALIBRATION (CRITICAL):
-   - INSUFFICIENT_EVIDENCE → confidence MUST be 0.3-0.5 (never higher)
-   - Single source only → confidence ≤ 0.7
-   - Sources not independent (cite each other) → confidence ≤ 0.7
-   - Multiple independent sources agree → confidence 0.75-0.9
+2. CERTAINTY CALIBRATION (CRITICAL):
+   - INSUFFICIENT_EVIDENCE → certainty MUST be 0.3-0.5 (never higher)
+   - Single source only → certainty ≤ 0.7
+   - Sources not independent (cite each other) → certainty ≤ 0.7
+   - Multiple independent sources agree → certainty 0.75-0.9
    - Reserve 0.9+ for claims with 3+ high-quality independent sources
 
 3. INTERNAL DOCUMENT DETECTION:
    - If claim references pitch deck content, product taglines, internal metrics, or company-specific terminology
-   - Mark as INSUFFICIENT_EVIDENCE with confidence ≤ 0.4
+   - Mark as INSUFFICIENT_EVIDENCE with certainty ≤ 0.4
    - State in reasoning: "This claim references internal company materials and cannot be independently verified"
 
 4. SOURCE INDEPENDENCE CHECK:
-   - Before giving confidence > 0.7, verify sources are truly independent
+   - Before giving certainty > 0.7, verify sources are truly independent
    - Company press releases, company website, founder interviews = NOT independent
    - Regulatory filings, third-party research, established news with original reporting = independent
 
 5. Do NOT guess financial numbers, dates, or proprietary information.
 
-6. Do NOT fabricate sources. No sources = INSUFFICIENT_EVIDENCE (confidence 0.3).
+6. Do NOT fabricate sources. No sources = INSUFFICIENT_EVIDENCE (certainty 0.3).
 
 7. When uncertain, always choose INSUFFICIENT_EVIDENCE over incorrect SUPPORTED.
 
@@ -124,12 +124,12 @@ Process each claim one by one with these calibration rules in mind.""".strip()
 
         if quality_report is not None:
             top_issues = quality_report.top_issues
-            systemic_issues = quality_report.systemic_issues
+            systemic_issues = quality_report.systemic_problems
             recommended_actions = quality_report.recommended_actions
             suggested_improvements = "The suggested improvements are in the top issues, systemic issues, and recommended actions."
         
         return f"""TASK:
-Verify each of the provided claims with careful attention to confidence calibration. 
+Verify each of the provided claims with careful attention to certainty calibration. 
 And make corrections based on the suggested improvements from the quality report from the last round. 
 Make the estimations more accurate and percise. If there are no improvements, you just ignore the
 top issues,systemic issues and recommended actions.
@@ -152,26 +152,26 @@ VERIFICATION RULES:
 
 1. Use ONLY the sources provided for each claim.
 
-2. CONFIDENCE CALIBRATION (CRITICAL):
-   - INSUFFICIENT_EVIDENCE → confidence MUST be 0.3-0.5 (never higher)
-   - Single source only → confidence ≤ 0.7
-   - Sources not independent (cite each other) → confidence ≤ 0.7
-   - Multiple independent sources agree → confidence 0.75-0.9
+2. CERTAINTY CALIBRATION (CRITICAL):
+   - INSUFFICIENT_EVIDENCE → certainty MUST be 0.3-0.5 (never higher)
+   - Single source only → certainty ≤ 0.7
+   - Sources not independent (cite each other) → certainty ≤ 0.7
+   - Multiple independent sources agree → certainty 0.75-0.9
    - Reserve 0.9+ for claims with 3+ high-quality independent sources
 
 3. INTERNAL DOCUMENT DETECTION:
    - If claim references pitch deck content, product taglines, internal metrics, or company-specific terminology
-   - Mark as INSUFFICIENT_EVIDENCE with confidence ≤ 0.4
+   - Mark as INSUFFICIENT_EVIDENCE with certainty ≤ 0.4
    - State in reasoning: "This claim references internal company materials and cannot be independently verified"
 
 4. SOURCE INDEPENDENCE CHECK:
-   - Before giving confidence > 0.7, verify sources are truly independent
+   - Before giving certainty > 0.7, verify sources are truly independent
    - Company press releases, company website, founder interviews = NOT independent
    - Regulatory filings, third-party research, established news with original reporting = independent
 
 5. Do NOT guess financial numbers, dates, or proprietary information.
 
-6. Do NOT fabricate sources. No sources = INSUFFICIENT_EVIDENCE (confidence 0.3).
+6. Do NOT fabricate sources. No sources = INSUFFICIENT_EVIDENCE (certainty 0.3).
 
 7. When uncertain, always choose INSUFFICIENT_EVIDENCE over incorrect SUPPORTED.
 

@@ -54,7 +54,7 @@ class ClaimQualityAssessment(BaseModel):
     quality_rating: QualityRating = Field(description="Overall quality rating")
     reasoning_quality: float = Field(ge=0.0, le=1.0, description="How well reasoning supports verdict")
     source_relevance: float = Field(ge=0.0, le=1.0, description="How relevant sources are")
-    confidence_calibration: float = Field(ge=0.0, le=1.0, description="How well calibrated confidence is")
+    certainty_calibration: float = Field(ge=0.0, le=1.0, description="How well calibrated certainty is")
     issues: List[QualityIssue] = Field(default_factory=list, description="Issues found")
     strengths: List[str] = Field(default_factory=list, description="What was done well")
     suggestions: List[str] = Field(default_factory=list, description="Improvement suggestions")
@@ -150,10 +150,10 @@ EVALUATION CRITERIA:
    - Are sources credible and appropriate?
    - Were key sources missed?
 
-3. CONFIDENCE CALIBRATION (0-1):
-   - Is the confidence level appropriate given the evidence?
-   - High confidence should require strong evidence
-   - Uncertain claims should have lower confidence
+3. CERTAINTY CALIBRATION (0-1):
+   - Is the certainty level appropriate given the evidence?
+   - High certainty should require strong evidence
+   - Uncertain claims should have lower certainty
 
 QUALITY RATINGS:
 - EXCELLENT: Rigorous analysis, well-sourced, properly calibrated
@@ -193,12 +193,12 @@ ANALYSIS INSTRUCTIONS:
 1. For each claim verification result:
    - Evaluate if the verdict is justified by the reasoning
    - Check if sources support the conclusions drawn
-   - Assess if confidence level is appropriate
+   - Assess if certainty level is appropriate
    - Identify any logical gaps or issues
    - Note what was done well
 
 2. Look for systemic issues across all claims:
-   - Patterns of over/under-confidence
+   - Patterns of over/under-certainty
    - Common reasoning gaps
    - Source quality issues
    - Category misclassifications
@@ -265,6 +265,7 @@ Be critical but constructive. Your goal is to improve verification quality."""
     def _analyze_search_quality(self, search_results: list) -> dict:
         """Analyze overall search quality across all companies"""
         total_searches = 0
+        excellent_count = 0
         good_count = 0
         partial_count = 0
         failed_count = 0
@@ -283,7 +284,9 @@ Be critical but constructive. Your goal is to improve verification quality."""
                 total_searches += 1
                 quality = search.get("search_quality", "UNKNOWN")
                 
-                if quality == "GOOD":
+                if quality == "EXCELLENT":
+                    excellent_count += 1
+                elif quality == "GOOD":
                     good_count += 1
                 elif quality == "PARTIAL":
                     partial_count += 1
@@ -309,18 +312,47 @@ Be critical but constructive. Your goal is to improve verification quality."""
                     "search_notes": search.get("search_notes")
                 })
         
+        # Calculate additional metrics
+        high_relevance_sources = sum(
+            len([s for s in search.get("source_details", []) if s.get("relevance") == "HIGH"])
+            for company_data in search_results
+            if company_data and company_data.get("search_results")
+            for search in company_data["search_results"].get("search_results_list", [])
+        )
+        
+        total_retries = sum(
+            search.get("retry_count", 0)
+            for company_data in search_results
+            if company_data and company_data.get("search_results")
+            for search in company_data["search_results"].get("search_results_list", [])
+        )
+        
+        total_domains = sum(
+            search.get("unique_domains", 0)
+            for company_data in search_results
+            if company_data and company_data.get("search_results")
+            for search in company_data["search_results"].get("search_results_list", [])
+        )
+        
         return {
             "total_searches": total_searches,
             "quality_breakdown": {
+                "EXCELLENT": excellent_count,
                 "GOOD": good_count,
                 "PARTIAL": partial_count,
                 "FAILED": failed_count
             },
-            "good_rate": round(good_count / total_searches, 2) if total_searches > 0 else 0,
+            "excellent_rate": round(excellent_count / total_searches, 2) if total_searches > 0 else 0,
+            "good_rate": round((excellent_count + good_count) / total_searches, 2) if total_searches > 0 else 0,
             "failed_rate": round(failed_count / total_searches, 2) if total_searches > 0 else 0,
             "total_sources": total_sources,
             "off_topic_sources": off_topic_sources,
             "off_topic_rate": round(off_topic_sources / total_sources, 2) if total_sources > 0 else 0,
+            # New metrics
+            "avg_sources_per_claim": round(total_sources / total_searches, 1) if total_searches > 0 else 0,
+            "high_relevance_rate": round(high_relevance_sources / total_sources, 2) if total_sources > 0 else 0,
+            "total_retries": total_retries,
+            "avg_domains_per_claim": round(total_domains / total_searches, 1) if total_searches > 0 else 0,
             "per_claim_search_details": per_claim_details
         }
     

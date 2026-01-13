@@ -108,7 +108,7 @@ def main():
         # Generate integrated report for this company
         print(f"📊 Generating integrated report...")
         aggregator = ResultAggregator(company_name=company_name)
-        integrated_report = aggregator.aggregate(claims, verification_response)
+        integrated_report = aggregator.aggregate(claims, verification_response, search_results=search_results)
         
         # Add to collection
         all_company_reports.append(integrated_report)
@@ -214,9 +214,13 @@ def main():
     if search_quality_summary:
         print(f"\n🔍 Search Quality:")
         print(f"   Total Searches: {search_quality_summary.get('total_searches', 0)}")
-        print(f"   Good Rate: {search_quality_summary.get('good_rate', 0):.0%}")
+        print(f"   Excellent Rate: {search_quality_summary.get('excellent_rate', 0):.0%}")
+        print(f"   Good+ Rate: {search_quality_summary.get('good_rate', 0):.0%}")
         print(f"   Failed Rate: {search_quality_summary.get('failed_rate', 0):.0%}")
-        print(f"   Off-Topic Rate: {search_quality_summary.get('off_topic_rate', 0):.0%}")
+        print(f"   Avg Sources/Claim: {search_quality_summary.get('avg_sources_per_claim', 0)}")
+        print(f"   High Relevance Rate: {search_quality_summary.get('high_relevance_rate', 0):.0%}")
+        print(f"   Avg Domains/Claim: {search_quality_summary.get('avg_domains_per_claim', 0)}")
+        print(f"   Total Retries Used: {search_quality_summary.get('total_retries', 0)}")
     
     if quality_report.top_issues:
         print("\n🔴 Top Issues to Address:")

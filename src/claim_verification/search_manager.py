@@ -1,11 +1,12 @@
 import os
 import json
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from langchain_perplexity import ChatPerplexity
 from langchain_core.prompts import ChatPromptTemplate
 
-from common.schemes import SearchResultsList, SearchResults, ClaimsResponse
+from common.schemes import SearchResultsList, SearchResults, ClaimsResponse, SearchQuality, SourceDetail
 
 load_dotenv()
 
@@ -100,59 +101,134 @@ CRITICAL RULES:
 
 Your output enables downstream verification - the MORE sources you find, the more confident the verification will be. Be comprehensive and thorough."""
     
+    def _enrich_result(self, result: SearchResults, retry_count: int = 0) -> SearchResults:
+        """Enrich search result with computed fields"""
+        # Calculate unique domains
+        domains = set()
+        for url in result.sources:
+            try:
+                parsed = urlparse(url)
+                domains.add(parsed.netloc)
+            except:
+                pass
+        
+        # Calculate source type breakdown
+        type_breakdown = {}
+        for detail in result.source_details:
+            if detail.source_type:
+                stype = detail.source_type.value if hasattr(detail.source_type, 'value') else str(detail.source_type)
+                type_breakdown[stype] = type_breakdown.get(stype, 0) + 1
+        
+        # Return enriched result (using model_copy for immutability)
+        return result.model_copy(update={
+            "unique_domains": len(domains),
+            "source_type_breakdown": type_breakdown,
+            "retry_count": retry_count
+        })
+    
+    def _generate_alternative_query(self, claim) -> str:
+        """Generate an alternative search query for retry"""
+        # Simple strategy: try a more general search
+        claim_text = claim.claim
+        # Strip specific numbers and dates for broader search
+        words = claim_text.split()
+        # Take key nouns/entities (simplified heuristic)
+        return f"{' '.join(words[:8])} company information"
+    
     def perform_search(self, claims):
         if not self.is_setup:
             print(f"Please set up the Search Manager first!")
             return
         
+        MAX_RETRIES = 1  # Maximum retry attempts for FAILED searches
         results = []
         total_claims = len(claims.claims)
-        print(f"\n🔍 Starting targeted search for {total_claims} claims...")
+        print(f"\n\U0001f50d Starting targeted search for {total_claims} claims...")
         
         for idx, claim in enumerate(claims.claims, 1):
             claim_preview = claim.claim[:60] + "..." if len(claim.claim) > 60 else claim.claim
             print(f"  [{idx}/{total_claims}] Searching: {claim_preview}")
             
-            try:
-                verification_response = self.verification_chain.invoke({
-                    "claim_text": f"""CLAIM TO VERIFY:
+            retry_count = 0
+            best_result = None
+            
+            for attempt in range(MAX_RETRIES + 1):
+                try:
+                    # Construct query hint for retries
+                    query_hint = ""
+                    if attempt > 0:
+                        query_hint = f"\n\nPREVIOUS SEARCH FAILED. Try alternative query: {self._generate_alternative_query(claim)}"
+                        print(f"    ↻ Retry {attempt}: trying alternative query...")
+                    
+                    verification_response = self.verification_chain.invoke({
+                        "claim_text": f"""CLAIM TO VERIFY:
 ID: {claim.id}
 Claim: {claim.claim}
 Original Evidence: {claim.evidence}
 
-Perform a targeted search following the methodology. Document your search query, entity identified, and provide detailed per-source analysis."""
-                })
-                
-                # Log search quality
-                quality_icon = {"GOOD": "✅", "PARTIAL": "⚠️", "FAILED": "❌"}.get(verification_response.search_quality, "❓")
-                relevant_count = len([s for s in verification_response.source_details if s.relevance in ["HIGH", "MEDIUM"]])
-                print(f"  {quality_icon} {claim.id}: {verification_response.search_quality} ({relevant_count} relevant sources)")
-                
-                results.append(verification_response)
-                
-            except Exception as e:
-                print(f"  ❌ Error searching {claim.id}: {str(e)}")
-                # Create a failed search result
-                from common.schemes import SourceDetail
-                failed_result = SearchResults(
-                    claim=claim,
-                    search_query=f"Failed to construct query for: {claim.claim[:50]}",
-                    entity_identified="Unknown",
-                    search_results="Search failed due to technical error",
-                    source_details=[],
-                    sources=[],
-                    search_quality="FAILED",
-                    search_notes=f"Error: {str(e)}"
-                )
-                results.append(failed_result)
+Perform a targeted search following the methodology. Document your search query, entity identified, and provide detailed per-source analysis.{query_hint}"""
+                    })
+                    
+                    # Enrich with computed fields (unique_domains, source_type_breakdown, retry_count)
+                    verification_response = self._enrich_result(verification_response, retry_count=attempt)
+                    
+                    # Get quality value (handle both enum and string)
+                    quality_val = verification_response.search_quality.value if hasattr(verification_response.search_quality, 'value') else str(verification_response.search_quality)
+                    
+                    # Log search quality
+                    quality_icon = {"EXCELLENT": "\U0001f31f", "GOOD": "\u2705", "PARTIAL": "\u26a0\ufe0f", "FAILED": "\u274c"}.get(quality_val, "\u2753")
+                    relevant_count = len([s for s in verification_response.source_details if s.relevance in ["HIGH", "MEDIUM"]])
+                    
+                    # Track best result
+                    if best_result is None or quality_val != "FAILED":
+                        best_result = verification_response
+                    
+                    # If not FAILED, we're done
+                    if quality_val != "FAILED":
+                        retry_info = f" (after {attempt} retry)" if attempt > 0 else ""
+                        print(f"  {quality_icon} {claim.id}: {quality_val} ({relevant_count} relevant sources, {verification_response.unique_domains} domains){retry_info}")
+                        break
+                    elif attempt == MAX_RETRIES:
+                        # Last attempt and still FAILED
+                        print(f"  {quality_icon} {claim.id}: FAILED ({relevant_count} relevant sources) after {attempt + 1} attempts")
+                    
+                except Exception as e:
+                    print(f"  \u274c Error searching {claim.id}: {str(e)}")
+                    # Create a failed search result
+                    best_result = SearchResults(
+                        claim=claim,
+                        search_query=f"Failed to construct query for: {claim.claim[:50]}",
+                        entity_identified="Unknown",
+                        search_results="Search failed due to technical error",
+                        source_details=[],
+                        sources=[],
+                        search_quality=SearchQuality.FAILED,
+                        search_notes=f"Error: {str(e)}",
+                        unique_domains=0,
+                        source_type_breakdown={},
+                        retry_count=attempt
+                    )
+                    break
+            
+            # Add result
+            if best_result:
+                results.append(best_result)
             
         search_results_list = SearchResultsList(search_results_list=results)
         
         # Print summary
-        good_count = len([r for r in results if r.search_quality == "GOOD"])
-        partial_count = len([r for r in results if r.search_quality == "PARTIAL"])
-        failed_count = len([r for r in results if r.search_quality == "FAILED"])
-        print(f"\n📊 Search Summary: ✅ {good_count} GOOD | ⚠️ {partial_count} PARTIAL | ❌ {failed_count} FAILED")
+        def get_quality(r):
+            return r.search_quality.value if hasattr(r.search_quality, 'value') else str(r.search_quality)
+        
+        excellent_count = len([r for r in results if get_quality(r) == "EXCELLENT"])
+        good_count = len([r for r in results if get_quality(r) == "GOOD"])
+        partial_count = len([r for r in results if get_quality(r) == "PARTIAL"])
+        failed_count = len([r for r in results if get_quality(r) == "FAILED"])
+        total_retries = sum(r.retry_count for r in results)
+        avg_domains = sum(r.unique_domains for r in results) / len(results) if results else 0
+        
+        print(f"\n\U0001f4ca Search Summary: \U0001f31f {excellent_count} EXCELLENT | \u2705 {good_count} GOOD | \u26a0\ufe0f {partial_count} PARTIAL | \u274c {failed_count} FAILED")
+        print(f"   Retries used: {total_retries} | Avg domains per claim: {avg_domains:.1f}")
         
         return search_results_list
     

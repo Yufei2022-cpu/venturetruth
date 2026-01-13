@@ -19,13 +19,15 @@ class ResultAggregator:
     def aggregate(
         self, 
         claims: ClaimsResponse, 
-        verification: VerificationList
+        verification: VerificationList,
+        search_results = None
     ) -> IntegratedReport:
         """Merge claims and verification into integrated report
         
         Args:
             claims: Extracted claims
             verification: Verification results
+            search_results: Optional search results for certainty calibration
             
         Returns:
             IntegratedReport with complete analysis
@@ -35,14 +37,30 @@ class ResultAggregator:
             v.claim_id: v for v in verification.verification_results
         }
         
+        # Create a mapping of claim_id to search quality (if available)
+        search_quality_map = {}
+        if search_results and hasattr(search_results, 'search_results_list'):
+            for sr in search_results.search_results_list:
+                claim_id = sr.claim.id if hasattr(sr.claim, 'id') else None
+                if claim_id:
+                    quality = sr.search_quality.value if hasattr(sr.search_quality, 'value') else str(sr.search_quality)
+                    search_quality_map[claim_id] = quality
+        
         # Build integrated results
         integrated_results = []
         for claim in claims.claims:
             verification_result = verification_map.get(claim.id)
             if not verification_result:
                 continue
+            
+            # Get search quality for this claim
+            search_quality = search_quality_map.get(claim.id, "UNKNOWN")
                 
-            integrated_result = self._build_integrated_result(claim, verification_result)
+            integrated_result = self._build_integrated_result(
+                claim, 
+                verification_result,
+                search_quality=search_quality
+            )
             integrated_results.append(integrated_result)
         
         # Generate summary
@@ -58,8 +76,22 @@ class ResultAggregator:
         
         return report
     
-    def _build_integrated_result(self, claim, verification_result) -> IntegratedClaimResult:
+    def _build_integrated_result(self, claim, verification_result, search_quality: str = "UNKNOWN") -> IntegratedClaimResult:
         """Build single integrated claim result"""
+        
+        # Apply certainty cap based on search quality
+        certainty = verification_result.certainty
+        original_certainty = certainty
+        
+        # CERTAINTY CALIBRATION based on search quality
+        if search_quality == "FAILED":
+            certainty = min(certainty, 0.3)  # Cap at 0.3 for failed searches
+        elif search_quality == "PARTIAL":
+            certainty = min(certainty, 0.5)  # Cap at 0.5 for partial searches
+        
+        # Log if certainty was adjusted
+        if certainty != original_certainty:
+            verification_result = verification_result.model_copy(update={"certainty": certainty})
         
         # Classify evidence type
         evidence_type = self._classify_evidence_type(
@@ -70,7 +102,7 @@ class ResultAggregator:
         # Build enhanced verification
         enhanced_verification = EnhancedVerification(
             verdict=verification_result.verdict,
-            confidence=verification_result.confidence,
+            certainty=certainty,  # Use calibrated certainty
             reasoning=verification_result.reasoning,
             evidence_type=evidence_type,
             source_count=len(verification_result.sources),
@@ -81,11 +113,11 @@ class ResultAggregator:
             ) if verification_result.verdict == Verdict.CONTRADICTED else None
         )
         
-        # Assess risk
+        # Assess risk (with calibrated certainty)
         risk_assessment = self._assess_risk(
             claim.claim,
             verification_result.verdict,
-            verification_result.confidence,
+            certainty,
             evidence_type
         )
         
@@ -125,7 +157,7 @@ class ResultAggregator:
         self, 
         claim_text: str, 
         verdict: Verdict, 
-        confidence: float,
+        certainty: float,
         evidence_type: EvidenceType
     ) -> RiskAssessment:
         """Assess investment risk for a claim"""
@@ -135,7 +167,7 @@ class ResultAggregator:
             risk_level = RiskLevel.HIGH
         elif verdict == Verdict.INSUFFICIENT_EVIDENCE or evidence_type == EvidenceType.NO_EVIDENCE:
             risk_level = RiskLevel.MEDIUM
-        elif verdict == Verdict.SUPPORTED and confidence >= 0.8:
+        elif verdict == Verdict.SUPPORTED and certainty >= 0.8:
             risk_level = RiskLevel.LOW
         else:
             risk_level = RiskLevel.MEDIUM

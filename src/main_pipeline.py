@@ -1,6 +1,7 @@
 import yaml
 import os
 import json
+import glob
 from pathlib import Path
 from datetime import datetime
 
@@ -149,7 +150,7 @@ def claim_verification():
         # Generate integrated report for this company
         print(f"📊 Generating integrated report...")
         aggregator = ResultAggregator(company_name=company_name)
-        integrated_report = aggregator.aggregate(claims, verification_response)
+        integrated_report = aggregator.aggregate(claims, verification_response, search_results=search_results)
 
         all_company_reports.append(integrated_report)
         
@@ -251,9 +252,13 @@ def quality_assessment(all_search_results, final_report_path):
     if search_quality_summary:
         print(f"\n🔍 Search Quality:")
         print(f"   Total Searches: {search_quality_summary.get('total_searches', 0)}")
-        print(f"   Good Rate: {search_quality_summary.get('good_rate', 0):.0%}")
+        print(f"   Excellent Rate: {search_quality_summary.get('excellent_rate', 0):.0%}")
+        print(f"   Good+ Rate: {search_quality_summary.get('good_rate', 0):.0%}")
         print(f"   Failed Rate: {search_quality_summary.get('failed_rate', 0):.0%}")
-        print(f"   Off-Topic Rate: {search_quality_summary.get('off_topic_rate', 0):.0%}")
+        print(f"   Avg Sources/Claim: {search_quality_summary.get('avg_sources_per_claim', 0)}")
+        print(f"   High Relevance Rate: {search_quality_summary.get('high_relevance_rate', 0):.0%}")
+        print(f"   Avg Domains/Claim: {search_quality_summary.get('avg_domains_per_claim', 0)}")
+        print(f"   Total Retries Used: {search_quality_summary.get('total_retries', 0)}")
     
     if quality_report.top_issues:
         print("\n🔴 Top Issues to Address:")
@@ -265,16 +270,43 @@ def quality_assessment(all_search_results, final_report_path):
     return quality_output_path
 
 
+def cleanup_old_results():
+    """Clean up previous run results before starting new run"""
+    patterns = [
+        "res/claims_*.json",
+        "res/verification_*.json",
+        "res/output.json",
+        "res/final_report.json",
+        "res/quality_report.json"
+    ]
+    cleaned = 0
+    for pattern in patterns:
+        for f in glob.glob(str(PROJECT_ROOT / pattern)):
+            os.remove(f)
+            cleaned += 1
+    if cleaned > 0:
+        print(f"\U0001f5d1\ufe0f  Cleaned up {cleaned} previous result files")
+
+
 def main_pipeline():
     MAX_ROUNDS = 3
+    cleanup_old_results()  # Auto-cleanup before starting
+    print("\n" + "="*60)
+    print("\U0001f4c1 Stage 1: File Content Extraction")
+    print("="*60)
     ingestion_pipeline()
+    print("\n" + "="*60)
+    print("\U0001f4cb Stage 2: Claim Extraction")
+    print("="*60)
     claim_extraction()
     for i in range(MAX_ROUNDS):
-        print(f"🚀 Starting Round {i+1}...")
+        print(f"\n" + "="*60)
+        print(f"\U0001f680 Starting Round {i+1} of {MAX_ROUNDS}...")
+        print("="*60)
         all_search_results, all_company_reports = claim_verification()
         final_report_path = summary_verifications(all_company_reports)
         quality_output_path = quality_assessment(all_search_results, final_report_path)
-        print(f"🎉 Round {i+1} completed!")
+        print(f"\U0001f389 Round {i+1} completed!")
 
 
 if __name__ == "__main__":
