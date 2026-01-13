@@ -193,7 +193,7 @@ Process each claim one by one with these calibration rules in mind.
         
         search_results_raw = self.search_manager.perform_search(claims)
         
-        search_results_prompt = self.build_correction_prompt(search_results_raw)
+        search_results_prompt = self.build_prompt(search_results_raw)
         
         verification_response = self.verification_chain.invoke({
             "search_results": search_results_prompt

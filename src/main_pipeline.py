@@ -28,7 +28,6 @@ def load_configuration():
 
 
 def ingestion_pipeline():
-    api_key = os.getenv("OPENAI_API_KEY")
     config = load_configuration()
     
     # Resolve paths relative to project root
@@ -63,8 +62,6 @@ def claim_extraction():
     )
     # Perform claim extractor setup
     claim_extractor.setup()
-    
-    all_company_reports = []
     
     for idx, item in enumerate(data_loader(), 1):
         # Extract company name from metadata
@@ -106,7 +103,7 @@ def claim_verification():
     if not results.is_dir():
         raise NotADirectoryError(f"Extraction results {results} is not a directory")
 
-    claims_files = results.glob("claims_*.json")
+    claims_files = list(results.glob("claims_*.json"))
 
     if not claims_files:
         raise FileNotFoundError(f"No claims files found in {results}")

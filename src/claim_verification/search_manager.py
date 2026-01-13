@@ -26,12 +26,12 @@ class SearchManager:
             model="sonar-pro",
             temperature=0,
             pplx_api_key=api_key,
-            max_tokens=1000,  # Increased for detailed per-source analysis
-            timeout=90,
+            max_tokens=2000,  # Increased for detailed per-source analysis with more sources
+            timeout=120,
             model_kwargs={
                 "extra_body": {
                     "return_related_questions": False,
-                    "num_search_results": 8,  # More results to filter
+                    "num_search_results": 20,  # Maximized results for comprehensive coverage
                 },
             }
         )
@@ -49,42 +49,56 @@ class SearchManager:
     
     def _get_search_system_prompt(self):
         """Return the system prompt for targeted search"""
-        return """You are an expert research analyst performing targeted fact-checking searches.
+        return """You are an expert research analyst performing comprehensive fact-checking searches.
+
+YOUR PRIMARY GOAL: Find AS MANY RELEVANT SOURCES AS POSSIBLE. The more high-quality sources you find, the better the verification will be.
 
 SEARCH METHODOLOGY (FOLLOW STRICTLY):
 
 STEP 1 - ENTITY RESOLUTION:
 - Extract the company/entity name from the claim
-- Identify any alternative names, parent companies, or related entities
-- Use the CORRECT entity name in your search (avoid generic terms)
+- Identify any alternative names, parent companies, subsidiaries, or related entities
+- Look for the entity in multiple contexts (news, official sources, industry reports, regulatory filings)
 
-STEP 2 - TARGETED QUERY CONSTRUCTION:
-- Build a specific search query combining: [Entity Name] + [Key Claim Keywords]
-- Example: "Tesla 2023 vehicle deliveries quarterly report" NOT "electric car deliveries"
-- Include relevant timeframes, metrics, or specific terms from the claim
+STEP 2 - MULTI-ANGLE QUERY CONSTRUCTION:
+- Construct MULTIPLE search queries from different angles to maximize source coverage:
+  a) Official sources: "[Entity] official announcement/press release"
+  b) News coverage: "[Entity] [claim keywords] news"
+  c) Financial/regulatory: "[Entity] SEC filing/annual report/earnings"
+  d) Industry analysis: "[Entity] market research/industry report"
+  e) Third-party verification: "[Entity] [claim keywords] verified/confirmed"
+- Example: For "Tesla delivered 1.8M vehicles in 2023"
+  -> "Tesla 2023 vehicle deliveries official", "Tesla annual report 2023", "Tesla Q4 2023 earnings deliveries"
 
-STEP 3 - PER-SOURCE EVALUATION:
+STEP 3 - MAXIMIZE SOURCE COLLECTION:
+- IMPORTANT: Aim to find AT LEAST 5-10 DIFFERENT sources for each claim
+- Prioritize diverse source types: news outlets, official company sources, regulatory filings, analyst reports, industry publications
+- Include sources from different dates to show consistency of information
+- Do NOT limit yourself to the first few results - dig deeper
+
+STEP 4 - PER-SOURCE EVALUATION:
 For EACH source found, you MUST provide:
 - The full URL
 - Relevance rating: HIGH (directly addresses claim), MEDIUM (related context), LOW (tangential), OFF_TOPIC (irrelevant)
 - A specific excerpt if the source contains relevant information
 - If no relevant info: explain WHY (e.g., "Article discusses different product line", "Data is from wrong time period")
 
-STEP 4 - SEARCH QUALITY ASSESSMENT:
+STEP 5 - SEARCH QUALITY ASSESSMENT:
 Rate your overall search:
-- GOOD: Found 2+ HIGH relevance sources that directly address the claim
-- PARTIAL: Found some relevant context but no direct confirmation/refutation
+- EXCELLENT: Found 5+ HIGH relevance sources with diverse perspectives
+- GOOD: Found 3-4 HIGH relevance sources that directly address the claim
+- PARTIAL: Found some relevant context but fewer than 3 direct sources
 - FAILED: No relevant sources found, or all sources are OFF_TOPIC
 
 CRITICAL RULES:
-1. NEVER return off-topic sources without marking them as OFF_TOPIC
-2. If claim references internal documents (pitch deck, internal metrics), note: "Internal document reference - cannot verify externally"
-3. Include ONLY relevant source URLs in the 'sources' list (filter out OFF_TOPIC)
-4. Document EXACTLY what you searched for in 'search_query'
-5. If search returns irrelevant results, explain why in 'search_notes'
-6. Keep search_results summary under 100 words
+1. NEVER stop searching after finding just 1-2 sources - always try to find more
+2. ALWAYS include the full list of ALL sources found, even if some are MEDIUM or LOW relevance
+3. If claim references internal documents (pitch deck, internal metrics), note: "Internal document reference - cannot verify externally" BUT STILL search for any public corroboration
+4. Document ALL search queries you tried in 'search_query' (comma-separated)
+5. Include cross-referencing sources that confirm the same information from different angles
+6. For financial claims, ALWAYS look for SEC filings, earnings reports, and analyst coverage
 
-Your output enables downstream verification - be precise and auditable."""
+Your output enables downstream verification - the MORE sources you find, the more confident the verification will be. Be comprehensive and thorough."""
     
     def perform_search(self, claims):
         if not self.is_setup:
