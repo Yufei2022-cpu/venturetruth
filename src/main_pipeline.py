@@ -11,8 +11,8 @@ from claim_extractor.claim_extractor import ClaimExtractor
 from file_content_extraction.ingestion_pipeline import IngestionPipeline
 from file_content_extraction.data_loader import DataLoader
 from common.result_aggregator import ResultAggregator
-from common.schemes import MultiCompanyReport, ResultSummary, ClaimsResponse, QualityReport
-from quality_checker.quality_checker import QualityChecker
+from common.schemes import MultiCompanyReport, ResultSummary, ClaimsResponse
+from quality_checker.quality_checker import QualityChecker, QualityReport
 
 # Get the project root directory (parent of src/)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -66,7 +66,7 @@ def claim_extraction():
     
     all_company_reports = []
     
-    for idx, item in enumerate(data_loader, 1):
+    for idx, item in enumerate(data_loader(), 1):
         # Extract company name from metadata
         company_name = item.metadata.get("Account Name", f"Company {idx}")
 
@@ -103,7 +103,7 @@ def claim_verification():
     if not results.exists():
         raise FileNotFoundError(f"Extraction results not found in {results}")
     
-    if not results.is_folder():
+    if not results.is_dir():
         raise NotADirectoryError(f"Extraction results {results} is not a directory")
 
     claims_files = results.glob("claims_*.json")
@@ -113,12 +113,12 @@ def claim_verification():
     
     # check if there are any suggested improvements in the quality report of the last round
     quality_output_path = Path(PROJECT_ROOT / config['quality_checker']['output_path'])
-    quality_report_files = quality_output_path.glob("quality_report.json")
+    quality_report_files = list(quality_output_path.glob("quality_report.json"))
     quality_report = None
 
     if quality_report_files:
-        # may be we nned to sort different quality reports to get the latest
-        last_quality_report = list(quality_report_files)[-1]
+        # may be we need to sort different quality reports to get the latest
+        last_quality_report = quality_report_files[-1]
         with open(last_quality_report, "r") as f:
             quality_report = json.load(f)
             quality_report = QualityReport.model_validate(quality_report)
@@ -132,7 +132,7 @@ def claim_verification():
             claims = ClaimsResponse.model_validate(claims)
 
         idx = claims_file.stem.split("_")[-1]
-        company_name = claims.metadata.get("Account Name", f"Company {idx}")
+        company_name = f"Company {idx}"
         
         # Run claim verification
         verification_response, search_results = claim_verifier.verify_claims_with_improvements(claims, quality_report)
