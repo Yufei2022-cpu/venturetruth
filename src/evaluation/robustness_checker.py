@@ -88,11 +88,15 @@ class RobustnessChecker:
             variations = self.PROMPT_VARIATIONS
         
         print(f"\n🔄 Running robustness test with {len(variations)} prompt variations...")
+        print(f"   Claims to verify: {len(claims.claims)}")
         
         verification_runs = []
         
         for i, variation in enumerate(variations, 1):
-            print(f"   [{i}/{len(variations)}] Running with '{variation}' prompt...")
+            import time
+            start_time = time.time()
+            
+            print(f"\n   [{i}/{len(variations)}] {variation.upper()}...")
             
             # Get the prompt variation
             system_prompt = get_prompt_variation(variation)
@@ -107,6 +111,16 @@ class RobustnessChecker:
                 
                 # Run verification
                 verification_result, _ = self.verifier.verify_claims(claims)
+                
+                # Show results for this run
+                verdicts = [r.verdict.value if hasattr(r.verdict, 'value') else r.verdict 
+                           for r in verification_result.verification_results]
+                supported = verdicts.count("SUPPORTED")
+                contradicted = verdicts.count("CONTRADICTED")
+                insufficient = verdicts.count("INSUFFICIENT_EVIDENCE")
+                
+                elapsed = time.time() - start_time
+                print(f"       ✅{supported} ❌{contradicted} ⚠️{insufficient} ({elapsed:.1f}s)")
                 
                 # Convert to dict format
                 run_data = {
@@ -127,7 +141,7 @@ class RobustnessChecker:
                 # Restore original prompt
                 self.verifier._get_system_prompt = original_prompt_method
         
-        print(f"   ✅ All {len(variations)} runs completed!")
+        print(f"\n   ✅ All {len(variations)} variations completed!")
         
         # Analyze the runs
         return self.analyze_from_multiple_runs(verification_runs)

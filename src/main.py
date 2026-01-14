@@ -229,10 +229,80 @@ def main():
     
     print(f"\n📄 Quality report saved to: {config['quality_checker']['output_path']}")
 
-    # Stage 4: Correction
+    # Stage 4: Robustness Testing
+    print("\n" + "="*60)
+    print("🔄 Stage 4: Robustness Testing (3 Prompt Variations)")
+    print("="*60)
+    
+    from evaluation.robustness_checker import RobustnessChecker
+    from common.schemes import ClaimsResponse
+    
+    # Collect all claims from all companies
+    all_claims = []
+    for idx in range(1, len(all_company_reports) + 1):
+        claims_path = PROJECT_ROOT / "res" / f"claims_{idx}.json"
+        if claims_path.exists():
+            import json
+            with open(claims_path, 'r', encoding='utf-8') as f:
+                claims_data = json.load(f)
+            claims = ClaimsResponse.model_validate(claims_data)
+            all_claims.append((idx, claims))
+    
+    if all_claims:
+        print(f"📊 Testing {sum(len(c.claims) for _, c in all_claims)} claims across {len(all_claims)} companies...")
+        
+        # Initialize robustness checker
+        robustness_checker = RobustnessChecker(
+            api_key=api_key,
+            model=config['claim_verifier']['model'],
+            temperature=config['claim_verifier']['temperature']
+        )
+        
+        # Run robustness test for each company's claims
+        all_robustness_results = []
+        for idx, claims in all_claims:
+            print(f"\n--- Company {idx}: {len(claims.claims)} claims ---")
+            try:
+                report = robustness_checker.run_robustness_test(claims)
+                all_robustness_results.append({
+                    "company_idx": idx,
+                    "report": report.to_dict()
+                })
+                print(f"   Stability Rate: {report.overall_stability_rate:.1%}")
+            except Exception as e:
+                print(f"   ⚠️ Error: {e}")
+        
+        # Save combined robustness report
+        robustness_output_path = str(PROJECT_ROOT / config['evaluation']['robustness_output'])
+        os.makedirs(os.path.dirname(robustness_output_path), exist_ok=True)
+        
+        combined_report = {
+            "analyzed_at": datetime.now().isoformat(),
+            "total_companies": len(all_robustness_results),
+            "company_results": all_robustness_results
+        }
+        
+        with open(robustness_output_path, 'w', encoding='utf-8') as f:
+            json.dump(combined_report, f, indent=2, ensure_ascii=False)
+        
+        # Print summary
+        if all_robustness_results:
+            # Print boxed summary for the last company's report
+            robustness_checker.print_summary(report)
+            
+            avg_stability = sum(r["report"]["overall_stability_rate"] for r in all_robustness_results) / len(all_robustness_results)
+            print(f"\n📈 Overall Robustness Summary (All Companies):")
+            print(f"   Companies Tested: {len(all_robustness_results)}")
+            print(f"   Avg Stability Rate: {avg_stability:.1%}")
+            print(f"\n📄 Robustness report saved to: {config['evaluation']['robustness_output']}")
+    else:
+        print("   ⚠️ No claims found for robustness testing")
 
-    
-    
+    print("\n" + "="*60)
+    print("🎉 All stages completed!")
+    print("="*60)
+
 
 if __name__ == "__main__":
     main()
+

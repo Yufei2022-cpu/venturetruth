@@ -288,6 +288,151 @@ def cleanup_old_results():
         print(f"\U0001f5d1\ufe0f  Cleaned up {cleaned} previous result files")
 
 
+def metadata_evaluation():
+    """Stage 5: Metadata Evaluation - Compare extracted metadata with ground truth"""
+    config = load_configuration()
+    
+    if not config.get('evaluation', {}).get('enabled', False):
+        print("   ⏭️ Metadata evaluation disabled in config")
+        return
+    
+    print("\n" + "="*60)
+    print("📊 Stage 5: Metadata Evaluation")
+    print("="*60)
+    
+    from evaluation.metadata_evaluator import MetadataEvaluator
+    
+    # Load extracted results
+    output_path = PROJECT_ROOT / config['file_content_extractor']['output_path']
+    if not output_path.exists():
+        print("   ⚠️ No extraction output found")
+        return
+    
+    with open(output_path, 'r', encoding='utf-8') as f:
+        extracted_data = json.load(f)
+    
+    # Handle different data formats
+    if isinstance(extracted_data, dict):
+        extracted_results = extracted_data.get("records", [extracted_data])
+    else:
+        extracted_results = extracted_data
+    
+    # Initialize evaluator
+    ground_truth_path = str(PROJECT_ROOT / config['evaluation']['ground_truth_path'])
+    evaluator = MetadataEvaluator(ground_truth_path)
+    
+    # Run evaluation
+    print(f"📊 Evaluating {len(extracted_results)} companies against ground truth...")
+    report = evaluator.evaluate_batch(extracted_results)
+    
+    # Print boxed summary
+    evaluator.print_summary(report)
+    
+    # Save report
+    output_file = str(PROJECT_ROOT / config['evaluation']['metadata_output'])
+    evaluator.save_report(report, output_file)
+
+
+def evidence_analysis():
+    """Stage 6: Evidence Analysis - Analyze source quality per claim"""
+    config = load_configuration()
+    
+    print("\n" + "="*60)
+    print("📊 Stage 6: Evidence Analysis")
+    print("="*60)
+    
+    from evaluation.claims_evidence_analyzer import ClaimsEvidenceAnalyzer
+    
+    # Check if final report exists
+    final_report_path = PROJECT_ROOT / "res" / "final_report.json"
+    if not final_report_path.exists():
+        print("   ⚠️ No final_report.json found")
+        return
+    
+    # Run analysis
+    analyzer = ClaimsEvidenceAnalyzer()
+    report = analyzer.analyze_from_report(str(final_report_path))
+    
+    # Print summary
+    analyzer.print_summary(report)
+    
+    # Save report
+    output_file = str(PROJECT_ROOT / config['evaluation']['evidence_output'])
+    analyzer.save_report(report, output_file)
+
+
+def robustness_testing(all_company_reports):
+    """Stage 4: Robustness Testing with 3 prompt variations"""
+    api_key = os.getenv("OPENAI_API_KEY")
+    config = load_configuration()
+    
+    print("\n" + "="*60)
+    print("🔄 Stage 4: Robustness Testing (3 Prompt Variations)")
+    print("="*60)
+    
+    from evaluation.robustness_checker import RobustnessChecker
+    
+    # Collect all claims from all companies
+    all_claims = []
+    claims_files = list(Path(f"{PROJECT_ROOT}/res").glob("claims_*.json"))
+    
+    for claims_file in claims_files:
+        with open(claims_file, 'r', encoding='utf-8') as f:
+            claims_data = json.load(f)
+        claims = ClaimsResponse.model_validate(claims_data)
+        idx = claims_file.stem.split("_")[-1]
+        all_claims.append((idx, claims))
+    
+    if not all_claims:
+        print("   ⚠️ No claims found for robustness testing")
+        return
+    
+    print(f"📊 Testing {sum(len(c.claims) for _, c in all_claims)} claims across {len(all_claims)} companies...")
+    
+    # Initialize robustness checker
+    robustness_checker = RobustnessChecker(
+        api_key=api_key,
+        model=config['claim_verifier']['model'],
+        temperature=config['claim_verifier']['temperature']
+    )
+    
+    # Run robustness test for each company's claims
+    all_robustness_results = []
+    for idx, claims in all_claims:
+        print(f"\n--- Company {idx}: {len(claims.claims)} claims ---")
+        try:
+            report = robustness_checker.run_robustness_test(claims)
+            all_robustness_results.append({
+                "company_idx": idx,
+                "report": report.to_dict()
+            })
+        except Exception as e:
+            print(f"   ⚠️ Error: {e}")
+    
+    # Save combined robustness report
+    robustness_output_path = str(PROJECT_ROOT / config['evaluation']['robustness_output'])
+    os.makedirs(os.path.dirname(robustness_output_path), exist_ok=True)
+    
+    combined_report = {
+        "analyzed_at": datetime.now().isoformat(),
+        "total_companies": len(all_robustness_results),
+        "company_results": all_robustness_results
+    }
+    
+    with open(robustness_output_path, 'w', encoding='utf-8') as f:
+        json.dump(combined_report, f, indent=2, ensure_ascii=False)
+    
+    # Print boxed summary
+    if all_robustness_results and report:
+        robustness_checker.print_summary(report)
+        
+        avg_stability = sum(r["report"]["overall_stability_rate"] for r in all_robustness_results) / len(all_robustness_results)
+        print(f"\n📈 Overall Robustness Summary (All Companies):")
+        print(f"   Companies Tested: {len(all_robustness_results)}")
+        print(f"   Avg Stability Rate: {avg_stability:.1%}")
+        print(f"\n📄 Robustness report saved to: {config['evaluation']['robustness_output']}")
+
+
 def main_pipeline():
     MAX_ROUNDS = 3
     cleanup_old_results()  # Auto-cleanup before starting
@@ -307,6 +452,19 @@ def main_pipeline():
         final_report_path = summary_verifications(all_company_reports)
         quality_output_path = quality_assessment(all_search_results, final_report_path)
         print(f"\U0001f389 Round {i+1} completed!")
+    
+    # Stage 4: Robustness Testing (after all rounds)
+    robustness_testing(all_company_reports)
+    
+    # Stage 5: Metadata Evaluation
+    metadata_evaluation()
+    
+    # Stage 6: Evidence Analysis
+    evidence_analysis()
+    
+    print("\n" + "="*60)
+    print("🎉 All stages completed!")
+    print("="*60)
 
 
 if __name__ == "__main__":
