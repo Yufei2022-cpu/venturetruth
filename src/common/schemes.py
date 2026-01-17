@@ -12,7 +12,7 @@ class Claim(BaseModel):
 
     id: str = Field(..., description="Unique claim identifier (e.g., C1, C2)")
     claim: str = Field(..., description="Plain English description of the claim")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score from 0.0 to 1.0")
+    confidence: float | None = Field(None, ge=0.0, le=1.0, description="Confidence score from 0.0 to 1.0 (optional)", exclude=True)
     evidence: str = Field(..., max_length=500, description="Short snippet from original text")
 
 
@@ -164,7 +164,7 @@ class IntegratedClaimResult(BaseModel):
     claim_id: str = Field(description="Unique claim identifier")
     claim_text: str = Field(description="Plain English description of the claim")
     category: ClaimCategory = Field(description="Auto-categorized claim type")
-    extraction_confidence: float = Field(ge=0.0, le=1.0, description="Extraction confidence score")
+    extraction_confidence: float | None = Field(None, ge=0.0, le=1.0, description="Extraction confidence score (optional)")
     original_evidence: str = Field(description="Original evidence snippet from document")
     verification: EnhancedVerification = Field(description="Verification details")
     risk_assessment: RiskAssessment = Field(description="Risk assessment")

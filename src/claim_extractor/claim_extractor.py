@@ -22,12 +22,12 @@ class ClaimExtractor:
         self.client = OpenAI(api_key=self.api_key)
         self.is_setup = True
     
-    def extract_claims(self, text):
+    def extract_claims(self, text, company_name: str = "Company"):
         if not self.is_setup:
             print(f"The ClaimExtractor is not setup!")
             return
         
-        prompt = self.prompt_builder.build_claims_prompt(text, self.max_claims)
+        prompt = self.prompt_builder.build_claims_prompt(text, self.max_claims, company_name)
         try:
             response = self.client.chat.completions.create(
                 model=self.model,

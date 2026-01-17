@@ -1,33 +1,53 @@
 class PromptBuilder:
-    def build_claims_prompt(self, text: str, max_claims: int = 30) -> str:
+    def build_claims_prompt(self, text: str, max_claims: int = 30, company_name: str = "Company") -> str:
         """
         Build the prompt for claim extraction.
 
         Args:
             text: Input text to analyze
             max_claims: Maximum number of claims to extract
+            company_name: Name of the company for prefixing claim IDs
 
         Returns:
             Formatted prompt string
         """
+        # Sanitize company name for use in IDs (remove special chars, spaces to underscores)
+        safe_company_name = "".join(c if c.isalnum() else "_" for c in company_name).strip("_")
+        
         return f"""
-You are an information extraction system.
+You are an information extraction system specialized in identifying marketing claims from startup pitch materials.
 
 TASK:
-Read the text below and extract concise, verifiable claims.
+Read the text below and extract ONLY marketing claims — promotional statements that assert facts about the company, its products, technology, market, or achievements that can be externally verified.
 
-DEFINITION OF A CLAIM:
-- An atomic statement that can be checked as true/false.
-- No vague stylistic comments unless they express a factual assertion.
-- Merge duplicates. Remove contradictions or mark them as "uncertain".
-- Ignore instructions, formatting hints, and unrelated boilerplate.
+DEFINITION OF A MARKETING CLAIM:
+- A factual assertion made to promote or validate the company/product.
+- An atomic statement that can be checked as true/false using external sources.
+- Typically includes: market size claims, technology performance metrics, customer/revenue numbers, product capabilities, competitive advantages, partnerships, awards, or published research.
 
-EXAMPLES OF GOOD CLAIMS:
-- "Eco-Friendly Glitter Market size is estimated to reach $450 Million by 2030, growing at a CAGR of 11.4 percent during 2024-2030."
-- "€10B Market of Carbon Tracking Solutions and AI Supply Chain Optimization."
-- "Iscent's technology generates 10 times less carbon footprint than traditional industries."
-- "The company was founded in 2015 and has 200 employees."
+WHAT TO EXCLUDE (NOT marketing claims):
+- Goals, intentions, or future plans (e.g., "We aim to...", "We plan to raise...", "Seeking investment...")
+- Funding requests or investment asks (e.g., "Looking for €500K seed round")
+- Internal company metadata (e.g., founding date, number of employees, company location)
+- Pricing information without a comparative claim
+- Team bios and credentials (unless claiming specific external achievements)
+- Subjective opinions or aspirational statements
+- Generic filler (e.g., "We are a passionate team...")
+
+EXAMPLES OF GOOD CLAIMS (INCLUDE):
+- "Eco-Friendly Glitter Market size is estimated to reach $450 Million by 2030, growing at a CAGR of 11.4%."
+- "Our technology generates 10x less carbon footprint than traditional industries."
 - "Product X reduces energy consumption by 30% compared to conventional solutions."
+- "We have 150+ enterprise customers across 12 countries."
+- "Our platform processes over 1 million transactions per day."
+- "Named a Gartner Cool Vendor in 2024."
+
+EXAMPLES OF BAD CLAIMS (EXCLUDE):
+- "We are seeking €500K investment." (funding request, not a verifiable marketing claim)
+- "Founded in 2015 with 50 employees." (metadata, not promotional)
+- "We plan to expand to 10 new markets." (future intention, not verifiable fact)
+- "Our team is passionate about sustainability." (subjective, not verifiable)
+- "Monthly subscription costs €99." (pricing without comparative claim)
 
 OUTPUT FORMAT:
 Return ONLY valid JSON, no extra text. Do not wrap the JSON in markdown code blocks.
@@ -36,9 +56,8 @@ Schema:
 {{
   "claims": [
     {{
-      "id": "C1",
-      "claim": "Plain English description of the claim.",
-      "confidence": 0.0 to 1.0,
+      "id": "{safe_company_name}-C1",
+      "claim": "Plain English description of the marketing claim.",
       "evidence": "Short snippet from the original text (max 200 chars)"
     }},
     ...
@@ -47,14 +66,10 @@ Schema:
 
 Rules:
 - Max {max_claims} claims.
-- Use stable ids: C1, C2, C3, ...
-- "confidence":
-    - 1.0 for very clear and explicit statements.
-    - Around 0.7–0.9 for strong but slightly indirect statements.
-    - Below 0.7 if the language is speculative / conditional.
+- Use stable ids with company prefix: {safe_company_name}-C1, {safe_company_name}-C2, {safe_company_name}-C3, ...
 - "evidence" must be copied verbatim from the original text (up to 200 characters).
-- Focus on factual claims about market size, technology performance, company information, product features, etc.
-- Extract numerical data, dates, comparisons, and specific achievements.
+- Focus ONLY on externally verifiable marketing claims: market size, technology performance, customer metrics, product capabilities, achievements, partnerships.
+- Exclude all goals, requests, metadata, and internally-focused statements.
 - Escape quotes properly so JSON is valid.
 
 TEXT:

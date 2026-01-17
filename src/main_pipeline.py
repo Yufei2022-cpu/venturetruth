@@ -71,7 +71,7 @@ def claim_extraction():
         print(f"\n--- Processing company {company_name}, ID {idx} ---")
         
         print(f"📝 Extracting claims...")
-        claims = claim_extractor.extract_claims(item)
+        claims = claim_extractor.extract_claims(item, company_name=company_name)
         print(f"   Found {len(claims.claims)} claims")
         
         print(f"💾 Saving extracted claims...")
@@ -81,6 +81,71 @@ def claim_extraction():
         )
     
     # Save all company claims extraction reports
+
+
+def export_claims_by_company():
+    """Export all claims organized by company to a separate JSON file."""
+    claims_files = list(Path(f"{PROJECT_ROOT}/res").glob("claims_*.json"))
+    
+    if not claims_files:
+        print("   ⚠️ No claims files found")
+        return
+    
+    # Load metadata to get company names
+    config = load_configuration()
+    output_path = PROJECT_ROOT / config['file_content_extractor']['output_path']
+    company_names = {}
+    
+    if output_path.exists():
+        with open(output_path, 'r', encoding='utf-8') as f:
+            extracted_data = json.load(f)
+        if isinstance(extracted_data, list):
+            for idx, item in enumerate(extracted_data, 1):
+                metadata = item.get("metadata", {})
+                company_names[str(idx)] = metadata.get("Account Name", f"Company {idx}")
+    
+    # Collect all claims by company
+    claims_by_company = {
+        "exported_at": datetime.now().isoformat(),
+        "total_companies": 0,
+        "total_claims": 0,
+        "companies": []
+    }
+    
+    for claims_file in sorted(claims_files, key=lambda x: int(x.stem.split("_")[-1])):
+        with open(claims_file, 'r', encoding='utf-8') as f:
+            claims_data = json.load(f)
+        
+        idx = claims_file.stem.split("_")[-1]
+        company_name = company_names.get(idx, f"Company {idx}")
+        
+        # Extract only the claim texts
+        claims_list = []
+        for claim in claims_data.get("claims", []):
+            claims_list.append(claim.get("claim"))
+        
+        company_entry = {
+            "company_id": idx,
+            "company_name": company_name,
+            "claim_count": len(claims_list),
+            "claims": claims_list
+        }
+        
+        claims_by_company["companies"].append(company_entry)
+        claims_by_company["total_claims"] += len(claims_list)
+    
+    claims_by_company["total_companies"] = len(claims_by_company["companies"])
+    
+    # Save to file
+    output_file = str(PROJECT_ROOT / "res" / "claims_by_company.json")
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(claims_by_company, f, indent=2, ensure_ascii=False)
+    
+    print(f"📄 Claims by company exported to: res/claims_by_company.json")
+    print(f"   Total: {claims_by_company['total_companies']} companies, {claims_by_company['total_claims']} claims")
+
 
 def claim_verification():
     api_key = os.getenv("OPENAI_API_KEY")
@@ -104,7 +169,7 @@ def claim_verification():
     if not results.is_dir():
         raise NotADirectoryError(f"Extraction results {results} is not a directory")
 
-    claims_files = list(results.glob("claims_*.json"))
+    claims_files = [f for f in results.glob("claims_*.json") if f.stem != "claims_by_company"]
 
     if not claims_files:
         raise FileNotFoundError(f"No claims files found in {results}")
@@ -125,7 +190,7 @@ def claim_verification():
     all_company_reports = []
 
     for claims_file in claims_files:
-        with open(claims_file, "r") as f:
+        with open(claims_file, "r", encoding="utf-8") as f:
             claims = json.load(f)
             claims = ClaimsResponse.model_validate(claims)
 
@@ -374,7 +439,7 @@ def robustness_testing(all_company_reports):
     
     # Collect all claims from all companies
     all_claims = []
-    claims_files = list(Path(f"{PROJECT_ROOT}/res").glob("claims_*.json"))
+    claims_files = [f for f in Path(f"{PROJECT_ROOT}/res").glob("claims_*.json") if f.stem != "claims_by_company"]
     
     for claims_file in claims_files:
         with open(claims_file, 'r', encoding='utf-8') as f:
@@ -434,7 +499,8 @@ def robustness_testing(all_company_reports):
 
 
 def main_pipeline():
-    MAX_ROUNDS = 3
+    config = load_configuration()
+    max_rounds = config['claim_verifier'].get('max_rounds', 3)
     cleanup_old_results()  # Auto-cleanup before starting
     print("\n" + "="*60)
     print("\U0001f4c1 Stage 1: File Content Extraction")
@@ -444,9 +510,10 @@ def main_pipeline():
     print("\U0001f4cb Stage 2: Claim Extraction")
     print("="*60)
     claim_extraction()
-    for i in range(MAX_ROUNDS):
+    export_claims_by_company()
+    for i in range(max_rounds):
         print(f"\n" + "="*60)
-        print(f"\U0001f680 Starting Round {i+1} of {MAX_ROUNDS}...")
+        print(f"\U0001f680 Starting Round {i+1} of {max_rounds}...")
         print("="*60)
         all_search_results, all_company_reports = claim_verification()
         final_report_path = summary_verifications(all_company_reports)

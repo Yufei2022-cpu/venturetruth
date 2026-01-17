@@ -41,16 +41,60 @@ def load_text_from_source(path: Optional[str]) -> str:
     return text
 
 
+def sanitize_json_string(text: str) -> str:
+    """
+    Sanitize a string to make it valid for JSON parsing.
+    
+    Removes null bytes and other problematic control characters that may
+    come from corrupted PDF text extraction. Also fixes invalid escape sequences.
+    
+    Args:
+        text: Raw text that may contain problematic characters
+        
+    Returns:
+        Sanitized text safe for JSON parsing
+    """
+    # Remove null bytes
+    text = text.replace('\x00', '')
+    
+    # Remove other control characters (except common whitespace)
+    # Control chars are 0x00-0x1F except tab (0x09), newline (0x0A), carriage return (0x0D)
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+    
+    # Fix invalid escape sequences by escaping backslashes that aren't followed by valid JSON escapes
+    # Valid JSON escapes are: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
+    # Replace lone backslashes with double backslashes, but preserve valid escapes
+    def fix_escapes(match):
+        char_after = match.group(1)
+        # Valid JSON escape characters
+        if char_after in ('"', '\\', '/', 'b', 'f', 'n', 'r', 't'):
+            return match.group(0)  # Keep as-is
+        elif char_after == 'u':
+            # Check if it's a valid unicode escape \uXXXX
+            return match.group(0)  # Keep as-is, let JSON parser validate
+        else:
+            # Invalid escape sequence - escape the backslash
+            return '\\\\' + char_after
+    
+    # Match backslash followed by any character
+    text = re.sub(r'\\(.)', fix_escapes, text)
+    
+    return text
+
+
 def extract_json_from_markdown(text: str) -> str:
     """
-    Extract JSON from markdown code blocks if present.
+    Extract JSON from markdown code blocks if present and sanitize it.
 
     Args:
         text: Text that may contain markdown code blocks
 
     Returns:
-        Extracted JSON string or original text if no code blocks found
+        Extracted and sanitized JSON string or original text if no code blocks found
     """
+    # Sanitize the text first to remove problematic characters
+    text = sanitize_json_string(text)
+    
     # Try to find JSON in markdown code blocks
     json_pattern = r'```(?:json)?\s*(.*?)\s*```'
     matches = re.findall(json_pattern, text, re.DOTALL)
