@@ -12,6 +12,7 @@ class Claim(BaseModel):
 
     id: str = Field(..., description="Unique claim identifier (e.g., C1, C2)")
     claim: str = Field(..., description="Plain English description of the claim")
+    category: str | None = Field(None, description="Claim category: market_size, technology, customer, partnership, award, financial, or other")
     confidence: float | None = Field(None, ge=0.0, le=1.0, description="Confidence score from 0.0 to 1.0 (optional)", exclude=True)
     evidence: str = Field(..., max_length=500, description="Short snippet from original text")
 

@@ -58,6 +58,7 @@ Schema:
     {{
       "id": "{safe_company_name}-C1",
       "claim": "Plain English description of the marketing claim.",
+      "category": "market_size",
       "evidence": "Short snippet from the original text (max 200 chars)"
     }},
     ...
@@ -67,6 +68,7 @@ Schema:
 Rules:
 - Max {max_claims} claims.
 - Use stable ids with company prefix: {safe_company_name}-C1, {safe_company_name}-C2, {safe_company_name}-C3, ...
+- "category" must be one of: market_size, technology, customer, partnership, award, financial, other.
 - "evidence" must be copied verbatim from the original text (up to 200 characters).
 - Focus ONLY on externally verifiable marketing claims: market size, technology performance, customer metrics, product capabilities, achievements, partnerships.
 - Exclude all goals, requests, metadata, and internally-focused statements.
