@@ -1,0 +1,274 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 900">
+  <defs>
+    <!-- Modern Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#334155"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+
+    <!-- Glowing Effects -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.4"/>
+    </filter>
+
+    <!-- Arrow Markers -->
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#64748b" />
+    </marker>
+    <marker id="arrow-active" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8b5cf6" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="900" fill="url(#bgGrad)"/>
+  
+  <!-- Header -->
+  <g transform="translate(500, 60)">
+    <text text-anchor="middle" fill="#f8fafc" font-family="Arial, sans-serif" font-size="28" font-weight="bold" letter-spacing="1">VENTURE<tspan fill="#3b82f6">TRUTH</tspan></text>
+    <text y="28" text-anchor="middle" fill="#94a3b8" font-family="Arial, sans-serif" font-size="14" letter-spacing="0.5">Automated Claim Verification Pipeline</text>
+  </g>
+
+  <!-- ==================== FLOW LINES (Behind Boxes) ==================== -->
+  
+  <!-- Row 1 Connections -->
+  <path d="M 230,160 L 280,160" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 480,160 L 530,160" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  
+  <!-- Row 1 to Row 2 Down -->
+  <path d="M 730,160 L 760,160" stroke="#64748b" stroke-width="2" fill="none"/>
+  <path d="M 760,160 C 780,160 780,160 780,180 L 780,260 C 780,280 780,280 760,280 L 730,280" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Row 2 Loop (Verification <-> Quality) -->
+  <!-- Forward -->
+  <path d="M 280,270 L 330,270" stroke="#8b5cf6" stroke-width="2" fill="none" marker-end="url(#arrow-active)" filter="url(#glow)"/>
+  <!-- Feedback -->
+  <path d="M 330,290 L 280,290" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,2" fill="none" marker-end="url(#arrow-active)"/>
+  
+  <!-- Row 2 to Row 3 (Split to 3) -->
+  <path d="M 530,280 L 560,280" stroke="#64748b" stroke-width="2" fill="none"/>
+  <path d="M 560,280 L 560,450" stroke="#64748b" stroke-width="2" fill="none"/>
+  <!-- Left branch -->
+  <path d="M 560,450 L 180,450 L 180,500" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <!-- Center branch -->
+  <path d="M 560,450 L 500,450 L 500,500" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <!-- Right branch -->
+  <path d="M 560,450 L 820,450 L 820,500" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Row 3 to Output (Merge) -->
+  <!-- Left merge -->
+  <path d="M 180,600 L 180,630" stroke="#64748b" stroke-width="2" fill="none"/>
+  <!-- Center merge -->
+  <path d="M 500,600 L 500,630" stroke="#64748b" stroke-width="2" fill="none"/>
+  <!-- Right merge -->
+  <path d="M 820,600 L 820,630" stroke="#64748b" stroke-width="2" fill="none"/>
+  
+  <!-- Collector line -->
+  <path d="M 180,630 L 820,630" stroke="#64748b" stroke-width="2" fill="none"/>
+  <path d="M 500,630 L 500,680" stroke="#22c55e" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+
+  <!-- ==================== BOXES ==================== -->
+
+  <!-- [Input] -->
+  <g transform="translate(30, 110)">
+    <rect width="200" height="100" rx="8" fill="#334155" stroke="#475569" stroke-width="1" filter="url(#shadow)"/>
+    <text x="100" y="45" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">📥 Input Sources</text>
+    <text x="100" y="70" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">• PDF Pitch Decks</text>
+    <text x="100" y="85" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">• CRM Data (CSV)</text>
+  </g>
+
+  <!-- [Phase 1: File Extraction] -->
+  <g transform="translate(280, 110)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#3b82f6" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#3b82f6" font-family="Arial" font-size="10" font-weight="bold" letter-spacing="1">PHASE 1</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">File Extraction</text>
+    <text x="100" y="80" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">MetaData Parsing</text>
+  </g>
+
+  <!-- [Phase 2: Claim Extraction] -->
+  <g transform="translate(530, 110)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#8b5cf6" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#8b5cf6" font-family="Arial" font-size="10" font-weight="bold" letter-spacing="1">PHASE 2</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">Claim Extraction</text>
+    <text x="100" y="80" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">GPT-5 Analysis</text>
+  </g>
+
+  <!-- [Phase 3: Verification Core] -->
+  <!-- Centered Row 2 -->
+  <g transform="translate(530, 230)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#f472b6" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#f472b6" font-family="Arial" font-size="10" font-weight="bold" letter-spacing="1">CORE PHASE 3</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">Verification Engine</text>
+    <text x="100" y="80" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">Perplexity Search + LLM</text>
+  </g>
+
+  <!-- [Quality Gate] -->
+  <g transform="translate(130, 230)">
+    <rect width="150" height="100" rx="8" fill="#334155" stroke="#f59e0b" stroke-width="2" filter="url(#shadow)"/>
+    <text x="75" y="35" text-anchor="middle" fill="#fcd34d" font-family="Arial" font-size="12" font-weight="bold">⚖️ Quality Gate</text>
+    <text x="75" y="60" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="11">Feedback Loop</text>
+    <text x="75" y="80" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="10">Iterative refinement</text>
+  </g>
+  
+  <!-- Row 2 Connection (Input from Row 1 comes into Verification from Right, we need to adjust) -->
+  <!-- Let's fix the logical flow visually: 
+       Row 1 R -> Row 2 R (Verification) -> Row 2 L (Quality) 
+       This means input comes to Verification, then bounces to Quality.
+       The arrow previously drawn "Row 1 to Row 2 Down" goes to (730, 280) which is empty space now.
+       Wait, extracting boxes positions:
+       Row 1: 30(In), 280(P1), 530(P2)
+       Row 2: 530(Verification), 130(Quality) is far left?
+       Let's put Verification in middle (280) maybe?
+       No, Input flow is Left -> Right.
+       So Verification should be below Claim Extraction.
+       Let's adjust position:
+       Verification at (530, 230) (Directly below Claim Extraction)
+       Quality at (330, 230) (to the Left of Verification)
+  -->
+  
+  <!-- RE-DRAWING CONNECTING LINES FOR ADJUSTED POSITIONS -->
+  <rect width="1000" height="900" fill="url(#bgGrad)" /> <!-- Clear BG -->
+  
+  <!-- HEADER again -->
+  <g transform="translate(500, 60)">
+    <text text-anchor="middle" fill="#f8fafc" font-family="Arial, sans-serif" font-size="28" font-weight="bold">VENTURE<tspan fill="#3b82f6">TRUTH</tspan></text>
+    <text y="28" text-anchor="middle" fill="#94a3b8" font-family="Arial, sans-serif" font-size="14">Automated Pipeline</text>
+  </g>
+
+  <!-- Row 1: 50(Input) -> 300(P1) -> 550(P2) -->
+  <!-- Row 2 (Center): 550(Verif) <-> 300(Quality) -->
+  <!-- Row 3: 80, 400, 720 (Evaluations) -->
+  <!-- Row 4: 400 (Output) -->
+
+  <!-- PATHS -->
+  <!-- Input to P1 -->
+  <path d="M 250,160 L 300,160" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <!-- P1 to P2 -->
+  <path d="M 500,160 L 550,160" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <!-- P2 to Verif (Down) -->
+  <path d="M 650,210 L 650,260" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Verif to Quality (Left) -->
+  <path d="M 550,290 L 500,290" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,2" fill="none" marker-end="url(#arrow-active)"/>
+  <!-- Quality to Verif (Right - Loop) -->
+  <path d="M 500,310 L 550,310" stroke="#8b5cf6" stroke-width="2" fill="none" marker-end="url(#arrow-active)"/>
+
+  <!-- Verif to Eval Split (Down) -->
+  <path d="M 650,360 L 650,450" stroke="#64748b" stroke-width="2" fill="none"/>
+  <!-- Branches -->
+  <path d="M 650,450 L 180,450 L 180,500" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 650,450 L 500,450 L 500,500" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 650,450 L 820,450 L 820,500" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Eval to Output -->
+  <path d="M 180,600 L 180,630 L 500,630" stroke="#64748b" stroke-width="2" fill="none"/>
+  <path d="M 500,600 L 500,630" stroke="#64748b" stroke-width="2" fill="none"/>
+  <path d="M 820,600 L 820,630 L 500,630" stroke="#64748b" stroke-width="2" fill="none"/>
+  <path d="M 500,630 L 500,680" stroke="#22c55e" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+
+  <!-- BOXES -->
+  
+  <!-- [Input] -->
+  <g transform="translate(50, 110)">
+    <rect width="200" height="100" rx="8" fill="#334155" stroke="#475569" stroke-width="1" filter="url(#shadow)"/>
+    <text x="100" y="45" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">📥 Input Data</text>
+    <text x="100" y="70" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">Decks &amp; CRM</text>
+  </g>
+
+  <!-- [P1: File Ext] -->
+  <g transform="translate(300, 110)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#3b82f6" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#3b82f6" font-family="Arial" font-size="10" font-weight="bold">STEP 1</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">File Processing</text>
+    <text x="100" y="75" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">Text Extraction</text>
+  </g>
+  
+  <!-- [P2: Claim Ext] -->
+  <g transform="translate(550, 110)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#8b5cf6" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#8b5cf6" font-family="Arial" font-size="10" font-weight="bold">STEP 2</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">Claim Extraction</text>
+    <text x="100" y="75" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">GPT-5 Analysis</text>
+  </g>
+
+  <!-- [P3: Verification] Vertical layout from P2 -->
+  <g transform="translate(550, 260)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#ec4899" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#ec4899" font-family="Arial" font-size="10" font-weight="bold">CORE ENGINE</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">Verification Loop</text>
+    <text x="100" y="75" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">Search &amp; Reasoning</text>
+  </g>
+
+  <!-- [Quality] Left of P3 -->
+  <g transform="translate(300, 260)">
+    <rect width="200" height="100" rx="8" fill="#334155" stroke="#f59e0b" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="35" text-anchor="middle" fill="#fcd34d" font-family="Arial" font-size="12" font-weight="bold">⚖️ Quality Check</text>
+    <text x="100" y="60" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="11">Feedback Agent</text>
+  </g>
+
+  <!-- [P4: Eval - Robustness] -->
+  <g transform="translate(80, 500)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#06b6d4" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#06b6d4" font-family="Arial" font-size="10" font-weight="bold">EVAL 1</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">Robustness</text>
+    <text x="100" y="75" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">Stability Test</text>
+  </g>
+  
+  <!-- [P5: Eval - Metadata] -->
+  <g transform="translate(400, 500)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#10b981" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#10b981" font-family="Arial" font-size="10" font-weight="bold">EVAL 2</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">Metadata</text>
+    <text x="100" y="75" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">Accuracy Check</text>
+  </g>
+
+  <!-- [P6: Eval - Evidence] -->
+  <g transform="translate(720, 500)">
+    <rect width="200" height="100" rx="8" fill="url(#cardGrad)" stroke="#f59e0b" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="30" text-anchor="middle" fill="#f59e0b" font-family="Arial" font-size="10" font-weight="bold">EVAL 3</text>
+    <text x="100" y="55" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">Evidence</text>
+    <text x="100" y="75" text-anchor="middle" fill="#94a3b8" font-family="Arial" font-size="11">Source Analysis</text>
+  </g>
+
+  <!-- [Output] -->
+  <g transform="translate(400, 680)">
+    <rect width="200" height="100" rx="8" fill="#334155" stroke="#22c55e" stroke-width="2" filter="url(#shadow)"/>
+    <text x="100" y="45" text-anchor="middle" fill="#f8fafc" font-family="Arial" font-size="14" font-weight="bold">📤 Final Reports</text>
+    <text x="100" y="70" text-anchor="middle" fill="#dcfce7" font-family="Arial" font-size="11">JSON &amp; Analytics</text>
+  </g>
+
+  <!-- Tech Stack Footer -->
+   <g transform="translate(50, 800)">
+    <rect width="900" height="60" rx="30" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+    
+    <g transform="translate(40, 35)">
+      <circle cx="0" cy="0" r="4" fill="#10b981" />
+      <text x="15" y="5" fill="#94a3b8" font-family="Arial" font-size="12" font-weight="bold">GPT-5</text>
+      
+      <circle cx="100" cy="0" r="4" fill="#8b5cf6" />
+      <text x="115" y="5" fill="#94a3b8" font-family="Arial" font-size="12" font-weight="bold">Perplexity</text>
+
+      <circle cx="210" cy="0" r="4" fill="#06b6d4" />
+      <text x="225" y="5" fill="#94a3b8" font-family="Arial" font-size="12" font-weight="bold">LangChain</text>
+
+      <circle cx="320" cy="0" r="4" fill="#3b82f6" />
+      <text x="335" y="5" fill="#94a3b8" font-family="Arial" font-size="12" font-weight="bold">Python</text>
+
+      <circle cx="410" cy="0" r="4" fill="#f59e0b" />
+      <text x="425" y="5" fill="#94a3b8" font-family="Arial" font-size="12" font-weight="bold">PyMuPDF</text>
+    </g>
+  </g>
+
+</svg>
