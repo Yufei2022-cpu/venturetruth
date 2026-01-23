@@ -501,16 +501,16 @@ def robustness_testing(all_company_reports):
 def main_pipeline():
     config = load_configuration()
     max_rounds = config['claim_verifier'].get('max_rounds', 3)
-    cleanup_old_results()  # Auto-cleanup before starting
-    print("\n" + "="*60)
-    print("\U0001f4c1 Stage 1: File Content Extraction")
-    print("="*60)
-    ingestion_pipeline()
-    print("\n" + "="*60)
-    print("\U0001f4cb Stage 2: Claim Extraction")
-    print("="*60)
-    claim_extraction()
-    export_claims_by_company()
+    # cleanup_old_results()  # Auto-cleanup before starting
+    # print("\n" + "="*60)
+    # print("\U0001f4c1 Stage 1: File Content Extraction")
+    # print("="*60)
+    # ingestion_pipeline()
+    # print("\n" + "="*60)
+    # print("\U0001f4cb Stage 2: Claim Extraction")
+    # print("="*60)
+    # claim_extraction()
+    # export_claims_by_company()
     for i in range(max_rounds):
         print(f"\n" + "="*60)
         print(f"\U0001f680 Starting Round {i+1} of {max_rounds}...")
@@ -534,5 +534,19 @@ def main_pipeline():
     print("="*60)
 
 
+def evaluation_pipeline():
+    config = load_configuration()
+    max_rounds = config['claim_verifier'].get('max_rounds', 3)
+    for i in range(max_rounds):
+        print(f"\n" + "="*60)
+        print(f"\U0001f680 Starting Round {i+1} of {max_rounds}...")
+        print("="*60)
+        all_search_results, all_company_reports = claim_verification()
+        final_report_path = summary_verifications(all_company_reports)
+        quality_output_path = quality_assessment(all_search_results, final_report_path)
+        print(f"\U0001f389 Round {i+1} completed!")
+
+
 if __name__ == "__main__":
     main_pipeline()
+    # evaluation_pipeline()
