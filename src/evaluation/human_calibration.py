@@ -611,13 +611,13 @@ def plot_ovr_confusions_poster_compact(
 
 if __name__ == "__main__":
     #llm_annotation()
-    p_pred, p_true, labels = basic_statistics()
+    p_true, p_pred, labels = basic_statistics()
 
     labels = ["SUPPORTED", "INSUFFICIENT_EVIDENCE", "CONTRADICTED"]
 
 
     
-    plot_ovr_confusions_poster_compact(p_true, p_pred, labels, normalize="true", save_path="./poster_figs/ovr_compact.png")
+     #plot_ovr_confusions_poster_compact(p_true, p_pred, labels, normalize="true", save_path="./poster_figs/ovr_compact.png")
 
 
 
@@ -631,7 +631,7 @@ if __name__ == "__main__":
 
 
     
-    # # poster_binary_confusions(p_true, p_pred, normalize="true", title_prefix="Confusion (One-vs-Rest)", save_dir="./poster_figs", save_formats=("png","pdf"), font_scale=1.1)
+    poster_binary_confusions(p_true, p_pred, normalize="true", title_prefix="Confusion (One-vs-Rest)", save_dir="./poster_figs", save_formats=("png","pdf"), font_scale=1.1)
     
     
     

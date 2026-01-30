@@ -548,5 +548,5 @@ def evaluation_pipeline():
 
 
 if __name__ == "__main__":
-    main_pipeline()
-    # evaluation_pipeline()
+    # main_pipeline()
+    evaluation_pipeline()
