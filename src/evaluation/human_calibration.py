@@ -115,53 +115,110 @@ def basic_statistics():
     print(cm_df)
     return p_true, p_pred, labels
 
-def plot_confusion(p_true, p_pred, labels, normalize=None, title="Confusion Matrix"):
+def plot_confusion(p_true, p_pred, labels=None, normalize=None, title="Confusion Matrix",
+                   figsize=(7.2, 6.0), dpi=220, save_path=None, show_percent=True,
+                   rotate_xticks=12, wrap_underscore=True, wrap_len=14):
     """
-    normalize: None | "true" (row-normalized) | "pred" | "all"
+    Plot a multi-class confusion matrix (NxN).
+
+    Args:
+        p_true, p_pred: list/array of true/pred labels
+        labels: list of class names in desired order. If None, inferred from data.
+        normalize: None | "true" | "pred" | "all"  (sklearn semantics)
+        title: figure title
+        figsize, dpi: figure size and resolution
+        save_path: if provided, save figure to this path (png/pdf/...)
+        show_percent: if True and normalize is not None, display percentage in cells.
+                      Also shows counts (recommended).
+        rotate_xticks: rotation angle for x tick labels
+    Returns:
+        fig, ax
     """
-    categories = sorted(set(p_true) | set(p_pred))
-    def helper(c, i):
-        if p_true[i] == c:
-            return c 
-        else:
-            return "NOT " + c
-    cm_true = [[helper(c, i) for i in range(len(p_true))]  for c in categories]
-    cm_pred = [[helper(c, i) for i in range(len(p_true))]  for c in categories]
-    labels = [[c, "NOT " + c] for c in categories]
-    print(cm_true)
-    print(len(cm_true))
-    print(len(cm_true[0]))
-    print(labels)
-    cm = [confusion_matrix(cm_true[i], cm_pred[i], labels=labels[i], normalize=normalize) for i in range(len(categories))]
-    #cm = confusion_matrix(p_true, p_pred, labels=labels, normalize=normalize)
 
-    fig, ax = plt.subplots()
-    im = ax.imshow(cm[0], interpolation="nearest")  # 默认 colormap
-    ax.figure.colorbar(im, ax=ax)
+    def wrap_label(s: str) -> str:
+        s = str(s)
+        if not wrap_underscore:
+            return s
+        if "_" in s and len(s) >= wrap_len:
+            parts = s.split("_")
+            mid = len(parts) // 2
+            return "_".join(parts[:mid]) + "\n" + "_".join(parts[mid:])
+        return s
 
-    ax.set(
-        xticks=2,
-        yticks=2,
-        xticklabels=labels[0],
-        yticklabels=labels[0],
-        ylabel="Human (True)",
-        xlabel="LLM (Pred)",
-        title=title + ("" if normalize is None else f" (normalize={normalize})"),
-    )
-    plt.setp(ax.get_xticklabels(), rotation=30, ha="right", rotation_mode="anchor")
+    # --- decide label order ---
+    if labels is None:
+        labels = sorted(set(p_true) | set(p_pred))
+    else:
+        labels = list(labels)
 
-    # 在格子里标注数值
-    fmt = ".2f" if normalize else "d"
-    thresh = cm.max() / 2.0 if cm.size else 0
-    for i in range(cm.shape[0]):
-        for j in range(cm.shape[1]):
-            ax.text(
-                j, i, format(cm[i, j], fmt),
-                ha="center", va="center",
-                color="white" if cm[i, j] > thresh else "black"
-            )
+    disp_labels = [wrap_label(x) for x in labels]
+
+    # --- compute matrices ---
+    cm_counts = confusion_matrix(p_true, p_pred, labels=labels, normalize=None)
+    cm = confusion_matrix(p_true, p_pred, labels=labels, normalize=normalize)
+
+    # --- plot ---
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    im = ax.imshow(cm, interpolation="nearest")  # default colormap
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    ax.set_title(title + ("" if normalize is None else f" (normalize={normalize})"), pad=12)
+    ax.set_xlabel("Pred", labelpad=10)
+    ax.set_ylabel("True", labelpad=10)
+
+    tick_pos = np.arange(len(labels))
+    ax.set_xticks(tick_pos)
+    ax.set_yticks(tick_pos)
+    ax.set_xticklabels(disp_labels)
+    ax.set_yticklabels(disp_labels)
+    plt.setp(ax.get_xticklabels(), rotation=rotate_xticks, ha="right", rotation_mode="anchor")
+
+    # optional grid lines to separate cells
+    ax.set_xticks(np.arange(-.5, len(labels), 1), minor=True)
+    ax.set_yticks(np.arange(-.5, len(labels), 1), minor=True)
+    ax.grid(which="minor", linestyle="-", linewidth=1)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    # --- annotate cells ---
+    # If normalize is None -> show counts only
+    # If normalize is not None -> show counts + percent (from normalized cm)
+    if normalize is None:
+        fmt_main = "d"
+        thresh = cm.max() / 2.0 if cm.size else 0.0
+        for i in range(cm.shape[0]):
+            for j in range(cm.shape[1]):
+                val = cm[i, j]
+                ax.text(
+                    j, i, format(int(val), fmt_main),
+                    ha="center", va="center",
+                    fontsize=12, fontweight="bold",
+                    color="black" if val > thresh else "white"
+                )
+    else:
+        # normalized -> cm in [0,1]
+        thresh = cm.max() / 2.0 if cm.size else 0.0
+        for i in range(cm.shape[0]):
+            for j in range(cm.shape[1]):
+                cnt = int(cm_counts[i, j])
+                val = float(cm[i, j])
+                color = "black" if val > thresh else "white"
+
+                # counts on first line
+                ax.text(j, i - 0.12, f"{cnt:d}",
+                        ha="center", va="center",
+                        fontsize=13, fontweight="bold", color=color)
+
+                # percentage on second line (optional)
+                if show_percent:
+                    ax.text(j, i + 0.20, f"{val*100:.1f}%",
+                            ha="center", va="center",
+                            fontsize=11, color=color)
 
     fig.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+
     return fig, ax
 
 def poster_binary_confusions(
@@ -631,11 +688,12 @@ if __name__ == "__main__":
 
 
     
-    poster_binary_confusions(p_true, p_pred, normalize="true", title_prefix="Confusion (One-vs-Rest)", save_dir="./poster_figs", save_formats=("png","pdf"), font_scale=1.1)
+    # poster_binary_confusions(p_true, p_pred, normalize="true", title_prefix="Confusion (One-vs-Rest)", save_dir="./poster_figs", save_formats=("png","pdf"), font_scale=1.1)
     
     
     
-    #fig, ax = plot_confusion(p_true, p_pred, labels, normalize="true", title="Confusion (row-normalized)")
+    fig, ax = plot_confusion(p_true, p_pred, labels=labels, normalize="true",
+                         title="Confusion Matrix", save_path="./poster_figs/cm3x3_norm_true.png")
     # fig, ax = plot_confusion(p_true, p_pred, labels, normalize=None, title="Confusion (counts)")
     #fig, ax = plot_per_class_prf(p_true, p_pred, labels)
     #fig, ax = plot_accuracy_slices(df)
