@@ -1,7 +1,0 @@
-langchain
-langchain-openai
-langchain-perplexity
-openai
-python-dotenv
-langchain-core
-perplexityai

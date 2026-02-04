@@ -1,0 +1,21 @@
+claim_extractor:
+  model: "gpt-5.2"
+  max_claims: 3
+  temperature: 0
+  output_path: "res/claims.json"
+
+claim_verifier:
+  model: "gpt-5.2"
+  temperature: 0
+  output_path: "res/verification_result.json"
+
+file_content_extractor:
+  csv_path: "Salesforce_Data_with_Attachment_File_Names_-_SF_DATA.csv"
+  pdf_folder: "sf_data_with_attachments"
+  output_path: "res/output.json"
+  limit: 2
+
+quality_checker:
+  model: "gpt-5.2"
+  temperature: 0.1
+  output_path: "res/quality_report.json"

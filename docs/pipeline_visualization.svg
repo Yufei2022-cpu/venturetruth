@@ -1,0 +1,155 @@
+<svg width="1000" height="150" viewBox="0 0 1000 150" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Simple Arrow Marker -->
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 L0,0" fill="#ADB5BD"/>
+    </marker>
+    <!-- Small Dot Marker for Logic Flows -->
+    <marker id="dot" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto">
+      <circle cx="2" cy="2" r="2" fill="#ADB5BD"/>
+    </marker>
+  </defs>
+
+  <!-- Background Pill (Clean Border, No Filter) -->
+  <rect x="10" y="15" width="980" height="120" rx="20" fill="white" stroke="#DEE2E6" stroke-width="1"/>
+
+  <!-- ==================== STAGE 1: INGESTION (OCR Process) ==================== -->
+  <g transform="translate(40, 45)">
+    <!-- Container -->
+    <rect x="0" y="0" width="160" height="60" rx="8" fill="#F0F8FF" stroke="#005293" stroke-width="0.5"/>
+    
+    <!-- Title -->
+    <text x="10" y="20" font-family="Arial" font-weight="bold" font-size="11" fill="#005293">1. INGESTION</text>
+    
+    <!-- PDF Icon -->
+    <path d="M15 35 H25 L35 45 V55 H15 V35 Z" fill="white" stroke="#005293" stroke-width="1"/>
+    <text x="18" y="50" font-family="Arial" font-size="6" fill="#005293">PDF</text>
+    
+    <!-- Conversion Arrow -->
+    <path d="M40 45 L50 45" stroke="#005293" stroke-width="1" marker-end="url(#arrowhead)"/>
+    
+    <!-- TXT Icon -->
+    <path d="M55 35 H65 L75 45 V55 H55 V35 Z" fill="white" stroke="#005293" stroke-width="1"/>
+    <text x="58" y="44" font-family="Arial" font-size="5" fill="#6C757D">.txt</text>
+    <text x="58" y="51" font-family="Arial" font-size="5" fill="#6C757D">.csv</text>
+    
+    <!-- Detail Text -->
+    <text x="85" y="45" font-family="Arial" font-size="9" fill="#6C757D">OCR / Parsing</text>
+  </g>
+
+  <!-- Connector 1 -->
+  <line x1="200" y1="75" x2="225" y2="75" stroke="#CED4DA" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+
+  <!-- ==================== STAGE 2: EXTRACTION (Neural Process) ==================== -->
+  <g transform="translate(225, 45)">
+    <rect x="0" y="0" width="180" height="60" rx="8" fill="#FFF8F0" stroke="#F39237" stroke-width="0.5" stroke-dasharray="4 2"/>
+    
+    <text x="10" y="20" font-family="Arial" font-weight="bold" font-size="11" fill="#F39237">2. CLAIM EXTRACTION</text>
+    
+    <!-- Neural Chip Icon -->
+    <rect x="15" y="32" width="24" height="24" rx="4" fill="white" stroke="#F39237"/>
+    <!-- Internal Nodes -->
+    <circle cx="20" cy="38" r="2" fill="#F39237"/>
+    <circle cx="20" cy="50" r="2" fill="#F39237"/>
+    <circle cx="34" cy="38" r="2" fill="#F39237"/>
+    <circle cx="34" cy="50" r="2" fill="#F39237"/>
+    <!-- Connections -->
+    <line x1="20" y1="38" x2="34" y2="50" stroke="#F39237" stroke-width="0.5"/>
+    <line x1="20" y1="50" x2="34" y2="38" stroke="#F39237" stroke-width="0.5"/>
+    
+    <!-- Processing Text -->
+    <text x="45" y="40" font-family="Arial" font-weight="bold" font-size="9" fill="#F39237">GPT-5.2</text>
+    
+    <!-- Output List -->
+    <rect x="95" y="30" width="75" height="26" rx="3" fill="white" stroke="#F39237" stroke-width="0.5"/>
+    <text x="100" y="40" font-family="Arial" font-size="7" fill="#6C757D">• Claim ID: C1...</text>
+    <text x="100" y="48" font-family="Arial" font-size="7" fill="#6C757D">• Claim ID: C2...</text>
+  </g>
+
+  <!-- Connector 2 -->
+  <line x1="405" y1="75" x2="430" y2="75" stroke="#CED4DA" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+
+  <!-- ==================== STAGE 3: MULTI-AGENT VERIFICATION (Cyclic Logic) ==================== -->
+  <g transform="translate(430, 38)">
+    <rect x="0" y="0" width="240" height="74" rx="10" fill="#F0FCF4" stroke="#27AE60" stroke-width="1"/>
+    
+    <text x="12" y="18" font-family="Arial" font-weight="bold" font-size="11" fill="#27AE60">3. MULTI-AGENT VERIFICATION</text>
+    
+    <!-- Agent A (Search) -->
+    <g transform="translate(15, 30)">
+       <rect x="0" y="0" width="50" height="35" rx="4" fill="white" stroke="#27AE60" stroke-width="0.5"/>
+       <text x="25" y="15" text-anchor="middle" font-family="Arial" font-size="8" font-weight="bold" fill="#27AE60">Agent A</text>
+       <text x="25" y="28" text-anchor="middle" font-family="Arial" font-size="7" fill="#6C757D">Searcher</text>
+    </g>
+
+    <!-- Cycle Loop -->
+    <path d="M68 40 L97 40" stroke="#27AE60" stroke-width="1" marker-end="url(#arrowhead)"/>
+    <path d="M97 55 L68 55" stroke="#27AE60" stroke-width="1" marker-end="url(#arrowhead)"/>
+
+    <!-- Agent B (Critic) -->
+    <g transform="translate(100, 30)">
+       <rect x="0" y="0" width="50" height="35" rx="4" fill="white" stroke="#27AE60" stroke-width="0.5"/>
+       <text x="25" y="15" text-anchor="middle" font-family="Arial" font-size="8" font-weight="bold" fill="#27AE60">Agent B</text>
+       <text x="25" y="28" text-anchor="middle" font-family="Arial" font-size="7" fill="#6C757D">Critic</text>
+    </g>
+    
+    <!-- Detail Badge -->
+    <rect x="160" y="30" width="70" height="16" rx="8" fill="#27AE60"/>
+    <text x="195" y="41" text-anchor="middle" font-family="Arial" font-size="8" fill="white" font-weight="bold">Perplexity API</text>
+    <text x="195" y="60" text-anchor="middle" font-family="Arial" font-size="8" fill="#555" font-style="italic">Iterative Debate</text>
+  </g>
+
+  <!-- Connector 3 -->
+  <line x1="670" y1="75" x2="695" y2="75" stroke="#CED4DA" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+
+  <!-- ==================== STAGE 4: ROBUSTNESS (Parallelism) ==================== -->
+  <g transform="translate(695, 45)">
+    <rect x="0" y="0" width="135" height="60" rx="8" fill="#FEF9E7" stroke="#F1C40F" stroke-width="0.5"/>
+    <text x="10" y="18" font-family="Arial" font-weight="bold" font-size="11" fill="#D35400">4. ROBUSTNESS</text>
+    
+    <!-- Parallel Arrows -->
+    <g transform="translate(15, 30)">
+       <!-- Branching -->
+       <path d="M0 10 L10 5" stroke="#F1C40F" stroke-width="1"/>
+       <path d="M0 10 L10 10" stroke="#F1C40F" stroke-width="1"/>
+       <path d="M0 10 L10 15" stroke="#F1C40F" stroke-width="1"/>
+       
+       <!-- Boxes -->
+       <rect x="12" y="2" width="12" height="6" fill="white" stroke="#F1C40F"/>
+       <rect x="12" y="7" width="12" height="6" fill="white" stroke="#F1C40F"/>
+       <rect x="12" y="12" width="12" height="6" fill="white" stroke="#F1C40F"/>
+       
+       <text x="30" y="8" font-family="Arial" font-size="6" fill="#D35400">Prompt A</text>
+       <text x="30" y="13" font-family="Arial" font-size="6" fill="#D35400">Prompt B</text>
+       <text x="30" y="18" font-family="Arial" font-size="6" fill="#D35400">Prompt C</text>
+    </g>
+    
+    <text x="15" y="54" font-family="Arial" font-size="8" fill="#6C757D">Consistency Check</text>
+  </g>
+
+  <!-- Connector 4 -->
+  <line x1="830" y1="75" x2="855" y2="75" stroke="#CED4DA" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+
+  <!-- ==================== STAGE 5: REPORT ==================== -->
+  <g transform="translate(855, 45)">
+     <rect x="0" y="0" width="120" height="60" rx="8" fill="#FDEDEC" stroke="#E74C3C" stroke-width="0.5"/>
+     
+     <text x="10" y="18" font-family="Arial" font-weight="bold" font-size="11" fill="#E74C3C">5. FINAL AUDIT</text>
+     
+     <!-- Chart Icon -->
+     <rect x="15" y="30" width="8" height="20" fill="#E74C3C"/> 
+     <rect x="25" y="25" width="8" height="25" fill="#E74C3C" fill-opacity="0.6"/>
+     <rect x="35" y="35" width="8" height="15" fill="#E74C3C" fill-opacity="0.3"/>
+     
+     <!-- Shield -->
+     <path d="M60 45 L52 40 V30 L60 26 L68 30 V40 L60 45 Z" fill="white" stroke="#E74C3C" stroke-width="1"/>
+     <path d="M57 36 L59 38 L63 34" fill="none" stroke="#E74C3C" stroke-width="1"/>
+     
+     <text x="50" y="55" font-family="Arial" font-size="8" fill="#6C757D">Risk Score</text>
+  </g>
+
+</svg>

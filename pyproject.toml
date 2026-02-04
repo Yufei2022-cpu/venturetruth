@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "venturetruth"
+version = "0.1.0"
+description = "Venture Truth claim extraction & verification project"
+readme = "README.md"
+authors = [
+    {name = "Mykhailo Riabets", email = "mykhailo.riabets@tum.de"},
+    {name = "Yufei Yang", email = "example@tum.de"}
+]
+requires-python = ">=3.10"
+dependencies = [
+    "langchain==1.0.3",
+    "langchain-openai==1.0.2",
+    "langchain-perplexity==1.0.0",
+    "openai==2.7.1",
+    "python-dotenv==1.2.1",
+    "langchain-core==1.0.3",
+    "PyPDF2==3.0.1",
+    "pdf2image==1.17.0",
+    "pytesseract==0.3.13",
+    "ijson==3.4.0.post0",
+    "PyYAML==6.0.3"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+venturetruth = "main:main"

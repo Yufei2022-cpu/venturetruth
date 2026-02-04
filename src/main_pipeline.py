@@ -1,0 +1,552 @@
+import yaml
+import os
+import json
+import glob
+from pathlib import Path
+from datetime import datetime
+
+from dotenv import load_dotenv
+
+from claim_verification.claim_verifier import ClaimVerifier
+from claim_extractor.claim_extractor import ClaimExtractor
+from file_content_extraction.ingestion_pipeline import IngestionPipeline
+from file_content_extraction.data_loader import DataLoader
+from common.result_aggregator import ResultAggregator
+from common.schemes import MultiCompanyReport, ResultSummary, ClaimsResponse
+from quality_checker.quality_checker import QualityChecker, QualityReport
+
+# Get the project root directory (parent of src/)
+PROJECT_ROOT = Path(__file__).parent.parent
+CONFIG_PATH = PROJECT_ROOT / "config" / "config.yaml"
+
+load_dotenv()
+
+def load_configuration():
+    with open(CONFIG_PATH, "r") as f:
+        config = yaml.safe_load(f)
+        
+    return config
+
+
+def ingestion_pipeline():
+    config = load_configuration()
+    
+    # Resolve paths relative to project root
+    ingestion_pipeline = IngestionPipeline(
+        csv_path=str(PROJECT_ROOT / config['file_content_extractor']['csv_path']),
+        pdf_folder=str(PROJECT_ROOT / config['file_content_extractor']['pdf_folder']),
+        output_path=str(PROJECT_ROOT / config['file_content_extractor']['output_path']),
+        limit=config['file_content_extractor']['limit']
+    )
+
+    ingestion_pipeline.run()
+
+def data_loader():
+    config = load_configuration()
+    
+    # Resolve paths relative to project root
+    data_loader = DataLoader(
+        json_path=str(PROJECT_ROOT / config['file_content_extractor']['output_path'])
+    )
+    
+    return data_loader
+
+def claim_extraction():
+    api_key = os.getenv("OPENAI_API_KEY")
+    config = load_configuration()
+    
+    claim_extractor = ClaimExtractor(
+        api_key=api_key,
+        model=config['claim_extractor']['model'],
+        temperature=config['claim_extractor']['temperature'],
+        max_claims=config['claim_extractor']['max_claims']
+    )
+    # Perform claim extractor setup
+    claim_extractor.setup()
+    
+    for idx, item in enumerate(data_loader(), 1):
+        # Extract company name from metadata
+        company_name = item.metadata.get("Account Name", f"Company {idx}")
+
+        print(f"\n--- Processing company {company_name}, ID {idx} ---")
+        
+        print(f"📝 Extracting claims...")
+        claims = claim_extractor.extract_claims(item, company_name=company_name)
+        print(f"   Found {len(claims.claims)} claims")
+        
+        print(f"💾 Saving extracted claims...")
+        claim_extractor.store_as_json(
+            claims,
+            path=str(PROJECT_ROOT / "res" / f"claims_{idx}.json")
+        )
+    
+    # Save all company claims extraction reports
+
+
+def export_claims_by_company():
+    """Export all claims organized by company to a separate JSON file."""
+    claims_files = list(Path(f"{PROJECT_ROOT}/res").glob("claims_*.json"))
+    
+    if not claims_files:
+        print("   ⚠️ No claims files found")
+        return
+    
+    # Load metadata to get company names
+    config = load_configuration()
+    output_path = PROJECT_ROOT / config['file_content_extractor']['output_path']
+    company_names = {}
+    
+    if output_path.exists():
+        with open(output_path, 'r', encoding='utf-8') as f:
+            extracted_data = json.load(f)
+        if isinstance(extracted_data, list):
+            for idx, item in enumerate(extracted_data, 1):
+                metadata = item.get("metadata", {})
+                company_names[str(idx)] = metadata.get("Account Name", f"Company {idx}")
+    
+    # Collect all claims by company
+    claims_by_company = {
+        "exported_at": datetime.now().isoformat(),
+        "total_companies": 0,
+        "total_claims": 0,
+        "companies": []
+    }
+    
+    for claims_file in sorted(claims_files, key=lambda x: int(x.stem.split("_")[-1])):
+        with open(claims_file, 'r', encoding='utf-8') as f:
+            claims_data = json.load(f)
+        
+        idx = claims_file.stem.split("_")[-1]
+        company_name = company_names.get(idx, f"Company {idx}")
+        
+        # Extract only the claim texts
+        claims_list = []
+        for claim in claims_data.get("claims", []):
+            claims_list.append(claim.get("claim"))
+        
+        company_entry = {
+            "company_id": idx,
+            "company_name": company_name,
+            "claim_count": len(claims_list),
+            "claims": claims_list
+        }
+        
+        claims_by_company["companies"].append(company_entry)
+        claims_by_company["total_claims"] += len(claims_list)
+    
+    claims_by_company["total_companies"] = len(claims_by_company["companies"])
+    
+    # Save to file
+    output_file = str(PROJECT_ROOT / "res" / "claims_by_company.json")
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
+    with open(output_file, 'w', encoding='utf-8') as f:
+        json.dump(claims_by_company, f, indent=2, ensure_ascii=False)
+    
+    print(f"📄 Claims by company exported to: res/claims_by_company.json")
+    print(f"   Total: {claims_by_company['total_companies']} companies, {claims_by_company['total_claims']} claims")
+
+
+def claim_verification():
+    api_key = os.getenv("OPENAI_API_KEY")
+    config = load_configuration()
+    
+    
+    claim_verifier = ClaimVerifier(
+        api_key=api_key,
+        model=config['claim_verifier']['model'],
+        temperature=config['claim_verifier']['temperature']
+    )
+    # Perform claim verifier setup 
+    claim_verifier.setup()
+
+    # check the extracted claims
+    results = Path(f"{PROJECT_ROOT}/res")
+
+    if not results.exists():
+        raise FileNotFoundError(f"Extraction results not found in {results}")
+    
+    if not results.is_dir():
+        raise NotADirectoryError(f"Extraction results {results} is not a directory")
+
+    claims_files = [f for f in results.glob("claims_*.json") if f.stem != "claims_by_company"]
+
+    if not claims_files:
+        raise FileNotFoundError(f"No claims files found in {results}")
+    
+    # check if there are any suggested improvements in the quality report of the last round
+    quality_output_path = Path(PROJECT_ROOT / config['quality_checker']['output_path'])
+    quality_report_files = list(quality_output_path.glob("quality_report.json"))
+    quality_report = None
+
+    if quality_report_files:
+        # may be we need to sort different quality reports to get the latest
+        last_quality_report = quality_report_files[-1]
+        with open(last_quality_report, "r") as f:
+            quality_report = json.load(f)
+            quality_report = QualityReport.model_validate(quality_report)
+    
+    all_search_results = []
+    all_company_reports = []
+
+    for claims_file in claims_files:
+        with open(claims_file, "r", encoding="utf-8") as f:
+            claims = json.load(f)
+            claims = ClaimsResponse.model_validate(claims)
+
+        idx = claims_file.stem.split("_")[-1]
+        company_name = f"Company {idx}"
+        
+        # Run claim verification
+        verification_response, search_results = claim_verifier.verify_claims_with_improvements(claims, quality_report)
+        
+        # Collect search results for quality analysis
+        all_search_results.append({
+            "company": company_name,
+            "search_results": search_results.model_dump() if search_results else None
+        })
+        
+        print(f"💾 Saving verification results...")
+        claim_verifier.store_as_json(
+            verification_response, 
+            path=Path(f"{PROJECT_ROOT}/res/verification_{idx}.json")
+        )
+        
+        # Generate integrated report for this company
+        print(f"📊 Generating integrated report...")
+        aggregator = ResultAggregator(company_name=company_name)
+        integrated_report = aggregator.aggregate(claims, verification_response, search_results=search_results)
+
+        all_company_reports.append(integrated_report)
+        
+        # Print summary
+        print(f"\n📈 Summary for {company_name}:")
+        print(f"   Total Claims: {integrated_report.summary.total_claims}")
+        print(f"   ✅ Supported: {integrated_report.summary.supported}")
+        print(f"   ❌ Contradicted: {integrated_report.summary.contradicted}")
+        print(f"   ⚠️  Insufficient Evidence: {integrated_report.summary.insufficient_evidence}")
+        print(f"   🚨 High Risk: {integrated_report.summary.high_risk_count}")
+        print(f"   Evidence: {integrated_report.summary.evidence_breakdown}")
+        
+        print(f"✅ Company {idx} completed!")
+
+    return all_search_results, all_company_reports
+
+def summary_verifications(all_company_reports):
+    total_claims = sum(r.summary.total_claims for r in all_company_reports)
+    total_supported = sum(r.summary.supported for r in all_company_reports)
+    total_contradicted = sum(r.summary.contradicted for r in all_company_reports)
+    total_insufficient = sum(r.summary.insufficient_evidence for r in all_company_reports)
+    total_high_risk = sum(r.summary.high_risk_count for r in all_company_reports)
+    
+    # Aggregate evidence breakdown
+    overall_evidence = {
+        "no_evidence": sum(r.summary.evidence_breakdown.get("no_evidence", 0) for r in all_company_reports),
+        "conflicting_sources": sum(r.summary.evidence_breakdown.get("conflicting_sources", 0) for r in all_company_reports),
+        "consistent_sources": sum(r.summary.evidence_breakdown.get("consistent_sources", 0) for r in all_company_reports)
+    }
+    
+    overall_summary = ResultSummary(
+        total_claims=total_claims,
+        supported=total_supported,
+        contradicted=total_contradicted,
+        insufficient_evidence=total_insufficient,
+        high_risk_count=total_high_risk,
+        evidence_breakdown=overall_evidence
+    )
+    
+    # Create multi-company report
+    multi_report = MultiCompanyReport(
+        processed_at=datetime.now().isoformat(),
+        total_companies=len(all_company_reports),
+        overall_summary=overall_summary,
+        companies=all_company_reports
+    )
+    
+    # Save multi-company report
+    print(f"💾 Saving multi-company final report...")
+    final_report_path = str(PROJECT_ROOT / "res" / "final_report.json")
+    os.makedirs(os.path.dirname(final_report_path), exist_ok=True)
+    
+    with open(final_report_path, "w", encoding="utf-8") as f:
+        json.dump(multi_report.to_dict(), f, indent=2, ensure_ascii=False)
+    
+    # Print overall summary
+    print("\n" + "="*60)
+    print("🎉 All processing completed!")
+    print("="*60)
+    print(f"\n📊 Overall Summary Across {len(all_company_reports)} Companies:")
+    print(f"   Total Claims: {total_claims}")
+    print(f"   ✅ Supported: {total_supported}")
+    print(f"   ❌ Contradicted: {total_contradicted}")
+    print(f"   ⚠️  Insufficient Evidence: {total_insufficient}")
+    print(f"   🚨 High Risk: {total_high_risk}")
+    print(f"   Evidence Breakdown: {overall_evidence}")
+    print(f"\n📄 Final multi-company report saved to: res/final_report.json")
+
+    return final_report_path
+
+def quality_assessment(all_search_results, final_report_path):
+    api_key = os.getenv("OPENAI_API_KEY")
+    config = load_configuration()
+    
+    # Initialize quality checker
+    quality_checker = QualityChecker(
+        api_key=api_key,
+        model=config['quality_checker']['model'],
+        temperature=config['quality_checker']['temperature']
+    )
+    quality_checker.setup()
+    
+    print("📊 Analyzing verification quality...")
+    quality_report, search_quality_summary = quality_checker.check_quality(
+        report_path=final_report_path,
+        search_results=all_search_results
+    )
+    
+    # Save quality report with search quality summary
+    quality_output_path = str(PROJECT_ROOT / config['quality_checker']['output_path'])
+    quality_checker.store_as_json(quality_report, quality_output_path, search_quality_summary)
+    # Print quality summary
+    print("\n📈 Quality Assessment Results:")
+    print(f"   Overall Score: {quality_report.overall_quality_score:.2f}")
+    print(f"   Overall Rating: {quality_report.overall_rating.value.upper()}")
+    print(f"   Critical Issues: {quality_report.critical_issues_count}")
+    
+    # Print search quality if available
+    if search_quality_summary:
+        print(f"\n🔍 Search Quality:")
+        print(f"   Total Searches: {search_quality_summary.get('total_searches', 0)}")
+        print(f"   Excellent Rate: {search_quality_summary.get('excellent_rate', 0):.0%}")
+        print(f"   Good+ Rate: {search_quality_summary.get('good_rate', 0):.0%}")
+        print(f"   Failed Rate: {search_quality_summary.get('failed_rate', 0):.0%}")
+        print(f"   Avg Sources/Claim: {search_quality_summary.get('avg_sources_per_claim', 0)}")
+        print(f"   High Relevance Rate: {search_quality_summary.get('high_relevance_rate', 0):.0%}")
+        print(f"   Avg Domains/Claim: {search_quality_summary.get('avg_domains_per_claim', 0)}")
+        print(f"   Total Retries Used: {search_quality_summary.get('total_retries', 0)}")
+    
+    if quality_report.top_issues:
+        print("\n🔴 Top Issues to Address:")
+        for i, issue in enumerate(quality_report.top_issues[:3], 1):
+            print(f"   {i}. {issue}")
+    
+    print(f"\n📄 Quality report saved to: {config['quality_checker']['output_path']}")
+
+    return quality_output_path
+
+
+def cleanup_old_results():
+    """Clean up previous run results before starting new run"""
+    patterns = [
+        "res/claims_*.json",
+        "res/verification_*.json",
+        "res/output.json",
+        "res/final_report.json",
+        "res/quality_report.json"
+    ]
+    cleaned = 0
+    for pattern in patterns:
+        for f in glob.glob(str(PROJECT_ROOT / pattern)):
+            os.remove(f)
+            cleaned += 1
+    if cleaned > 0:
+        print(f"\U0001f5d1\ufe0f  Cleaned up {cleaned} previous result files")
+
+
+def metadata_evaluation():
+    """Stage 5: Metadata Evaluation - Compare extracted metadata with ground truth"""
+    config = load_configuration()
+    
+    if not config.get('evaluation', {}).get('enabled', False):
+        print("   ⏭️ Metadata evaluation disabled in config")
+        return
+    
+    print("\n" + "="*60)
+    print("📊 Stage 5: Metadata Evaluation")
+    print("="*60)
+    
+    from evaluation.metadata_evaluator import MetadataEvaluator
+    
+    # Load extracted results
+    output_path = PROJECT_ROOT / config['file_content_extractor']['output_path']
+    if not output_path.exists():
+        print("   ⚠️ No extraction output found")
+        return
+    
+    with open(output_path, 'r', encoding='utf-8') as f:
+        extracted_data = json.load(f)
+    
+    # Handle different data formats
+    if isinstance(extracted_data, dict):
+        extracted_results = extracted_data.get("records", [extracted_data])
+    else:
+        extracted_results = extracted_data
+    
+    # Initialize evaluator
+    ground_truth_path = str(PROJECT_ROOT / config['evaluation']['ground_truth_path'])
+    evaluator = MetadataEvaluator(ground_truth_path)
+    
+    # Run evaluation
+    print(f"📊 Evaluating {len(extracted_results)} companies against ground truth...")
+    report = evaluator.evaluate_batch(extracted_results)
+    
+    # Print boxed summary
+    evaluator.print_summary(report)
+    
+    # Save report
+    output_file = str(PROJECT_ROOT / config['evaluation']['metadata_output'])
+    evaluator.save_report(report, output_file)
+
+
+def evidence_analysis():
+    """Stage 6: Evidence Analysis - Analyze source quality per claim"""
+    config = load_configuration()
+    
+    print("\n" + "="*60)
+    print("📊 Stage 6: Evidence Analysis")
+    print("="*60)
+    
+    from evaluation.claims_evidence_analyzer import ClaimsEvidenceAnalyzer
+    
+    # Check if final report exists
+    final_report_path = PROJECT_ROOT / "res" / "final_report.json"
+    if not final_report_path.exists():
+        print("   ⚠️ No final_report.json found")
+        return
+    
+    # Run analysis
+    analyzer = ClaimsEvidenceAnalyzer()
+    report = analyzer.analyze_from_report(str(final_report_path))
+    
+    # Print summary
+    analyzer.print_summary(report)
+    
+    # Save report
+    output_file = str(PROJECT_ROOT / config['evaluation']['evidence_output'])
+    analyzer.save_report(report, output_file)
+
+
+def robustness_testing(all_company_reports):
+    """Stage 4: Robustness Testing with 3 prompt variations"""
+    api_key = os.getenv("OPENAI_API_KEY")
+    config = load_configuration()
+    
+    print("\n" + "="*60)
+    print("🔄 Stage 4: Robustness Testing (3 Prompt Variations)")
+    print("="*60)
+    
+    from evaluation.robustness_checker import RobustnessChecker
+    
+    # Collect all claims from all companies
+    all_claims = []
+    claims_files = [f for f in Path(f"{PROJECT_ROOT}/res").glob("claims_*.json") if f.stem != "claims_by_company"]
+    
+    for claims_file in claims_files:
+        with open(claims_file, 'r', encoding='utf-8') as f:
+            claims_data = json.load(f)
+        claims = ClaimsResponse.model_validate(claims_data)
+        idx = claims_file.stem.split("_")[-1]
+        all_claims.append((idx, claims))
+    
+    if not all_claims:
+        print("   ⚠️ No claims found for robustness testing")
+        return
+    
+    print(f"📊 Testing {sum(len(c.claims) for _, c in all_claims)} claims across {len(all_claims)} companies...")
+    
+    # Initialize robustness checker
+    robustness_checker = RobustnessChecker(
+        api_key=api_key,
+        model=config['claim_verifier']['model'],
+        temperature=config['claim_verifier']['temperature']
+    )
+    
+    # Run robustness test for each company's claims
+    all_robustness_results = []
+    for idx, claims in all_claims:
+        print(f"\n--- Company {idx}: {len(claims.claims)} claims ---")
+        try:
+            report = robustness_checker.run_robustness_test(claims)
+            all_robustness_results.append({
+                "company_idx": idx,
+                "report": report.to_dict()
+            })
+        except Exception as e:
+            print(f"   ⚠️ Error: {e}")
+    
+    # Save combined robustness report
+    robustness_output_path = str(PROJECT_ROOT / config['evaluation']['robustness_output'])
+    os.makedirs(os.path.dirname(robustness_output_path), exist_ok=True)
+    
+    combined_report = {
+        "analyzed_at": datetime.now().isoformat(),
+        "total_companies": len(all_robustness_results),
+        "company_results": all_robustness_results
+    }
+    
+    with open(robustness_output_path, 'w', encoding='utf-8') as f:
+        json.dump(combined_report, f, indent=2, ensure_ascii=False)
+    
+    # Print boxed summary
+    if all_robustness_results and report:
+        robustness_checker.print_summary(report)
+        
+        avg_stability = sum(r["report"]["overall_stability_rate"] for r in all_robustness_results) / len(all_robustness_results)
+        print(f"\n📈 Overall Robustness Summary (All Companies):")
+        print(f"   Companies Tested: {len(all_robustness_results)}")
+        print(f"   Avg Stability Rate: {avg_stability:.1%}")
+        print(f"\n📄 Robustness report saved to: {config['evaluation']['robustness_output']}")
+
+
+def main_pipeline():
+    config = load_configuration()
+    max_rounds = config['claim_verifier'].get('max_rounds', 3)
+    # cleanup_old_results()  # Auto-cleanup before starting
+    # print("\n" + "="*60)
+    # print("\U0001f4c1 Stage 1: File Content Extraction")
+    # print("="*60)
+    # ingestion_pipeline()
+    # print("\n" + "="*60)
+    # print("\U0001f4cb Stage 2: Claim Extraction")
+    # print("="*60)
+    # claim_extraction()
+    # export_claims_by_company()
+    for i in range(max_rounds):
+        print(f"\n" + "="*60)
+        print(f"\U0001f680 Starting Round {i+1} of {max_rounds}...")
+        print("="*60)
+        all_search_results, all_company_reports = claim_verification()
+        final_report_path = summary_verifications(all_company_reports)
+        quality_output_path = quality_assessment(all_search_results, final_report_path)
+        print(f"\U0001f389 Round {i+1} completed!")
+    
+    # Stage 4: Robustness Testing (after all rounds)
+    robustness_testing(all_company_reports)
+    
+    # Stage 5: Metadata Evaluation
+    metadata_evaluation()
+    
+    # Stage 6: Evidence Analysis
+    evidence_analysis()
+    
+    print("\n" + "="*60)
+    print("🎉 All stages completed!")
+    print("="*60)
+
+
+def evaluation_pipeline():
+    config = load_configuration()
+    max_rounds = config['claim_verifier'].get('max_rounds', 3)
+    for i in range(max_rounds):
+        print(f"\n" + "="*60)
+        print(f"\U0001f680 Starting Round {i+1} of {max_rounds}...")
+        print("="*60)
+        all_search_results, all_company_reports = claim_verification()
+        final_report_path = summary_verifications(all_company_reports)
+        quality_output_path = quality_assessment(all_search_results, final_report_path)
+        print(f"\U0001f389 Round {i+1} completed!")
+
+
+if __name__ == "__main__":
+    # main_pipeline()
+    evaluation_pipeline()
