@@ -15,3 +15,5 @@ sf_data_with_attachments
 
 # IDEs
 .idea
+
+*.csv
