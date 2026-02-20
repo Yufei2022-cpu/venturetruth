@@ -10,8 +10,8 @@ claim_verifier:
   output_path: "res/verification_result.json"
 
 file_content_extractor:
-  csv_path: "Salesforce_Data_with_Attachment_File_Names_-_SF_DATA.csv"
-  pdf_folder: "sf_data_with_attachments"
+  csv_path: "res/Salesforce_Data_with_Attachment_File_Names_-_SF_DATA.csv"
+  pdf_folder: "res/sf_data_with_attachments"
   output_path: "res/output.json"
   limit: 2
 
@@ -19,3 +19,11 @@ quality_checker:
   model: "gpt-5.2"
   temperature: 0.1
   output_path: "res/quality_report.json"
+
+evaluation:
+  enabled: true
+  ground_truth_path: "res/Salesforce_Data_with_Attachment_File_Names_-_SF_DATA.csv"
+  metadata_output: "res/evaluation/metadata_evaluation_output.json"
+  evidence_output: "res/evaluation/claims_evidence_report.json"
+  robustness_output: "res/evaluation/robustness_report.json"
+  fields_to_evaluate: "all"

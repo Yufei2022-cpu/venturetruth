@@ -501,16 +501,16 @@ def robustness_testing(all_company_reports):
 def main_pipeline():
     config = load_configuration()
     max_rounds = config['claim_verifier'].get('max_rounds', 3)
-    # cleanup_old_results()  # Auto-cleanup before starting
-    # print("\n" + "="*60)
-    # print("\U0001f4c1 Stage 1: File Content Extraction")
-    # print("="*60)
-    # ingestion_pipeline()
-    # print("\n" + "="*60)
-    # print("\U0001f4cb Stage 2: Claim Extraction")
-    # print("="*60)
-    # claim_extraction()
-    # export_claims_by_company()
+    cleanup_old_results()  # Auto-cleanup before starting
+    print("\n" + "="*60)
+    print("\U0001f4c1 Stage 1: File Content Extraction")
+    print("="*60)
+    ingestion_pipeline()
+    print("\n" + "="*60)
+    print("\U0001f4cb Stage 2: Claim Extraction")
+    print("="*60)
+    claim_extraction()
+    export_claims_by_company()
     for i in range(max_rounds):
         print(f"\n" + "="*60)
         print(f"\U0001f680 Starting Round {i+1} of {max_rounds}...")
@@ -548,5 +548,4 @@ def evaluation_pipeline():
 
 
 if __name__ == "__main__":
-    # main_pipeline()
-    evaluation_pipeline()
+    main_pipeline()
