@@ -4,6 +4,14 @@
 
 VentureTruth is an automated pipeline that extracts, analyzes, and verifies factual claims from startup pitch documents and investment materials. Using advanced LLM technology and web search integration, it helps investors identify potential misinformation and assess the credibility of startup claims.
 
+--
+
+## Repository strucute
+
+* Project report and all related plots, images, and figures can be found under `./report`
+* Porject poster and all related plots, images, and figures can be found under `./poster`
+* Entire code logic can be found under `./src`
+
 ---
 
 ## 🎯 Overview
@@ -51,7 +59,9 @@ cp .env.example .env
 # PERPLEXITY_API_KEY=your_key_here
 ```
 
-4. Run the pipeline:
+5. Adjust the configurations in `./config/config.yaml`
+
+5. Run the pipeline:
 ```bash
 python -m src.main_pipeline
 ```
