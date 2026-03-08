@@ -1,0 +1,44 @@
+\section{Discussion}
+
+\subsection{Interpretation of Results}
+The experimental results represent design decisions of the \textsc{VentureTruth}. Namely, it is designed to avoid false positives.
+The confusion matrix (Figure \ref{fig:confusion}) reveals a strong bias towards "conservative" verdicts (\texttt{INSUFFICIENT\_EVIDENCE} and \texttt{CONTRADICTED}). This behaviour is a direct consequence of our verification rules~(Appendix \ref{app:claim_verification}), which explicitly limit confidence scores ($<0.7$) for claims supported by only a single source or dependent evidence.
+\\
+\\
+For the \texttt{SUPPORTED} class, high precision (89\%) and moderate recall (44\%) reflect the model's behaviour as a strict filter during the verification stage. Therefore, it may discard valid claims if the retrieval step fails to find multiple independent sources.
+\\
+\\
+The \texttt{INSUFFICIENT\_EVIDENCE} class achieves the highest recall and precision. The high recall here indicates that the system correctly identifies claims that cannot be verified using the provided sources. Whereas, high precision means that \textsc{VentureTruth} has a low chance of classifying an invalid or correct claim as one that cannot be verified.
+\\
+\\
+For the \texttt{CONTRADICTED} class, our model shows perfect recall (identifying all actual contradictions) but lower precision (40\%). This observation suggests that the model is sensitive to conflicting signals. In addition, such a difference can be explained by class imbalance.
+\\
+\\
+Therefore, we can state that our pipeline achieves performance comparable to that of human experts for the \texttt{CONTRADICTED} and \texttt{INSUFFICIENT\_EVIDENCE} claims. However, it performs weakly with the \texttt{SUPPORTED} claims. This is the answer for RQ1.
+\\
+\\
+We also observed that \textsc{VentureTruth} misclassified almost half of the supported claims. This indicates that the model was unsure about the source credibility. This means the system abstains when unsure, which answers RQ2.
+
+\subsection{Limitations}
+Our study faces several limitations that contextualize these findings:
+\begin{enumerate}
+    \item \textbf{Dataset Scale \& Imbalance:} The evaluation was conducted on a set of 42 annotated claims. Thus, the observed results cannot be generalized. Moreover, the class distribution of the test data is another important limitation. For the \texttt{CONTRADICTED} class, we had only 2 samples, which limits the pipeline's evaluation quality for that class.
+    \item \textbf{Source Accessibility:} The current pipeline relies exclusively on the web search. It cannot access private information sources like paid registries, court filings, and private deal databases, leading to \texttt{CONTRADICTED} or \texttt{INSUFFICIENT\_EVIDENCE} verdicts for truthful claims that lack public footprints.
+    \item \textbf{Model selection:} Our experiments primarily utilized the OpenAI GPT-5.2 model. While performant, relying on a single model family may introduce specific biases in reasoning.
+\end{enumerate}
+
+\subsection{Future Research Directions}
+To address these limitations and further enhance \textsc{VentureTruth}, we formulated the following directions:
+\\
+\\
+\textbf{1. Advanced Reasoning Architectures}. To address the precision/recall trade-off, future work should move beyond simple RAG to a Chain of Verification (CoVe) approach. This would split the verification process into distinct "Plan", "Execute", and "Verify" steps, allowing the system to decompose complex claims into sub-questions and verify them independently before synthesizing a final verdict.
+\\
+\\
+\textbf{2. Constitutional AI for Calibration}. Currently, our quality assessment relies on prompt engineering. adopting a \textbf{Constitutional AI} framework would involve training or fine-tuning a "Critic" model on a dataset of correctly calibrated verdicts (e.g., "Always reject single-source support"). This would enforce our calibration rules more reliably than prompt instructions alone.
+\\
+\\
+\textbf{3. Multi-Agent Adversarial Debate}. To enable more nuanced verdicts, we propose a multi-agent system where a "Proponent" agent and a "Sceptic" agent debate the validity of a claim. A "Judge" agent would then arbitrate. This adversarial setup could reduce confirmation bias and better simulate the collaborative nature of a human investment committee.
+\\
+\\
+\textbf{4. Hybrid Information Retrieval}. Expanding the ingestion pipeline to support trusted, structured data sources (e.g., the Crunchbase API, localized corporate registries) would reduce false negatives for private-market claims that are not present in free search engines.
+

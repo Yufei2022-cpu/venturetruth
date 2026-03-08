@@ -1,0 +1,52 @@
+\documentclass[11pt]{article}
+\usepackage[final]{acl}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{microtype}
+\usepackage{inconsolata}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{minted}
+\usepackage{booktabs}
+
+\title{\textsc{VentureTruth}: An Automated Claim Verification
+Pipeline for Venture Capital Due Diligence}
+
+\author{Yufei Yang \\
+  Technical University of Munich \\
+  \texttt{yufei.yang@tum.de} \\\And
+  Zekai Li \\
+  Technical University of Munich  \\
+  \texttt{ge65kul@mytum.de} \\\AND
+  Mykhailo Riabets \\
+  Technical University of Munich \\
+  \texttt{mykhailo.riabets@tum.de} \\\And
+  Joyce Ann Clarize Galang \\
+  Technical University of Munich, UVC \\
+  \texttt{joyce.acdg@gmail.com}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Due diligence in venture capital involves extensive evaluation of investment opportunities. This includes going through documents and claims. This process is traditionally manual, time-consuming, and prone to inconsistencies. To address problems of the manual approach, we present \textsc{VentureTruth}, an automated end-to-end pipeline that extracts, verifies, and evaluates factual claims from startup documentation using Large Language Models (LLMs) and real-time web search. The proposed system processes input documents, extracts verifiable claims using LLM, retrieves supporting and contradictory evidence via AI-based web retrieval, and produces structured verification reports, including risk assessments of the evaluated claims. The pipeline incorporates iterative quality improvement through self-reflection of the verification results, robustness testing across prompt variations, and a suite of evaluation metrics. The results demonstrate that \textsc{VentureTruth} is able to achieve the performance of the human expert on the classification task, especially for claims that are incorrect (observed 100\% accuracy) or do not have enough validation evidence (observed more than 90\% accuracy).
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/related_literature}
+\input{sections/methodology}
+\input{sections/results}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\bibliography{bibiliography}
+
+\appendix
+
+\input{sections/appendix}
+
+\end{document}

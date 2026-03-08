@@ -1,0 +1,174 @@
+\section{Appendix}
+
+\subsection{Sample Output}
+\label{appendix:sample_output}
+\begin{minted}[fontsize=\small, frame=single, breaklines]{JSON}
+{
+  "claim_id": "C1",
+  "claim_text": "X is a startup based in Germany.",
+  "category": "other",
+  "extraction_confidence": 0.95,
+  "original_evidence": "'Startup Country': 'Germany'",
+  "verification": {
+    "verdict": "SUPPORTED",
+    "certainty": 0.9,
+    "reasoning": "Multiple independent third-party company/startup directories and profiles consistently list X's headquarters/location as Berlin, Germany. The company's own website also references Brandbrandnew GmbH and indicates operations ended, which aligns with the existence of a Germany-based startup entity.",
+    "evidence_type": "consistent_sources",
+    "source_count": 7,
+    "sources": [
+      "https://www.cbinsights.com/company/X",
+      "https://startup-map.cologne/companies/X/t
+      eam/alumni-founders",
+      "https://www.startupnight.net/
+      startups/2023/hX",
+      "https://www.startbas
+      e.com/organization/X/"
+    ],
+    "contradiction_details": null
+  },
+  "risk_assessment": {
+    "risk_level": "low",
+    "investor_alert": false,
+    "requires_followup": false,
+    "followup_questions": []
+  }
+}
+\end{minted}
+
+
+% =====================================
+
+
+\subsection{Classification rules}
+\label{appendix:classification_rules}
+
+\begin{table*}[t]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{@{}p{0.2\linewidth} p{0.75\linewidth}@{}}
+\toprule
+\textbf{Annotation Field} & \textbf{Criteria and Rules} \\ 
+\midrule
+
+\multicolumn{2}{@{}l}{\textbf{1. Verdict Assignment ($L$)}} \\
+\midrule
+\texttt{SUPPORTED} & 
+\textbf{Condition:} The retrieved evidence $E$ explicitly confirms or clearly entails the claim. \\
+& \textbf{Rule:} Must be backed by at least one independent, high-reliability source (e.g., \texttt{Regulatory}, \texttt{News}, \texttt{Industry}). Statements found \textit{only} on the company's official channels (\texttt{Official}) cannot yield a \texttt{SUPPORTED} verdict on their own. \\
+
+\texttt{CONTRADICTED} & 
+\textbf{Condition:} The retrieved evidence $E$ explicitly refutes or clearly contradicts the claim. \\
+& \textbf{Rule:} If evidence conflicts, the refuting evidence must be of equal or greater reliability than the supporting evidence to assign this label. \\
+
+\texttt{INSUFFICIENT\_} & 
+\textbf{Condition:} A definitive conclusion cannot be drawn from the available evidence. \\
+\texttt{EVIDENCE} & \textbf{Rule:} Assign this label if: (i) no relevant evidence is found, (ii) evidence is entirely dependent or self-published (\texttt{Official}), (iii) evidence is vague or low-credibility (\texttt{Social}), or (iv) an unresolvable conflict exists among equally reliable sources. \\
+
+\midrule
+\multicolumn{2}{@{}l}{\textbf{2. Confidence Scoring ($s \in [0,1]$)}} \\
+\midrule
+\textbf{High Certainty} \newline ($0.8 \le s \le 1.0$) & 
+\textbf{Condition:} The verdict is indisputable based on the available evidence. \\
+& \textbf{Rule for \texttt{SUPPORTED}/\texttt{CONTRADICTED}:} Requires corroboration from multiple (at least two) independent, top-tier sources. \\
+
+\textbf{Moderate Certainty} \newline ($0.5 < s < 0.8$) & 
+\textbf{Condition:} The verdict is highly probable, but the evidence lacks perfect redundancy. \\
+& \textbf{Rule:} Backed by exactly one independent, reliable source, or slightly ambiguous wording that leans strongly in one direction. \\
+
+\textbf{Low Certainty} \newline ($0.0 \le s \le 0.5$) & 
+\textbf{Condition:} The verdict is forced due to evidentiary weakness or severe ambiguity. \\
+& \textbf{Rule:} This range is essentially reserved for \texttt{INSUFFICIENT\_EVIDENCE} verdicts, reflecting cautious abstention. \\
+\end{tabular}
+\caption{Annotation guidelines and rules for human claim evaluation. Evaluators assess each claim based on the retrieved evidence $E$ and assign a verdict $L$ along with a confidence score $s \in [0,1]$.}
+\label{tab:annotation_rules}
+\end{table*}
+
+% ----------------------------------------------
+\section{Primary System Prompts and Core Thresholds}
+\label{app:prompts_thresholds}
+
+VentureTruth's AI modules are driven by specialized prompts designed to enforce analytical rigor and conservative calibration. This appendix documents the core prompt intents together with the \emph{exact} thresholds and deterministic rules enforced throughout the pipeline.
+
+\subsection{Claim Extraction}
+\label{app:claim_extraction}
+
+\textbf{Goal.} Extract verifiable marketing and factual claims from raw text.
+
+\textbf{Filtering Rules.} The extraction prompt enforces strict exclusion of:
+(i) funding goals and fundraising targets,
+(ii) intentions and forward-looking statements (e.g., ``We plan to \dots''),
+(iii) subjective opinions and value judgments, and
+(iv) internal-only metadata (e.g., generic team sizes without external corroboration).
+Compound factual statements (e.g., ``We partnered with X and grew Y\%'') are decomposed into distinct atomic claims.
+
+\textbf{Limits and Decoding.} The extractor is configured to output between 3 and 20 claims per company (configurable), with a default maximum of 3 claims in the deployed configuration. Decoding is deterministic with temperature $T=0$.
+
+\subsection{Evidence Retrieval (Search Manager)}
+\label{app:evidence_retrieval}
+
+\textbf{Goal.} Retrieve diverse, highly relevant public sources that may corroborate or refute extracted claims.
+
+\textbf{Retrieval Settings.} Evidence retrieval uses Perplexity's \texttt{sonar-pro} API with a 60-second timeout and a maximum of 500 generated tokens per API call.
+
+\textbf{Search Process.} The search prompt instructs the model to generate multi-angle queries (e.g., official, news, financial, and industry perspectives) to maximize coverage, targeting 5--10 distinct sources per claim.
+
+\textbf{Quality Assessment and Retries.} Retrieval quality is evaluated on an ordinal scale from \textsc{FAILED} to \textsc{EXCELLENT}, where \textsc{EXCELLENT} corresponds to five or more highly relevant sources. If a retrieval attempt is rated \textsc{FAILED}, the system triggers exactly one automatic retry (maximum retries: 1) with forced query reformulation.
+
+\subsection{Claim Verification}
+\label{app:claim_verification}
+
+\textbf{Goal.} Assess each claim against retrieved evidence and assign a verdict
+$y \in \{\texttt{SUPPORTED}, \texttt{CONTRADICTED}, \texttt{INSUFFICIENT\_EVIDENCE}\}$.
+
+\textbf{Certainty Output.} The verifier returns a calibrated certainty score $c \in [0,1]$ alongside the verdict.
+
+\textbf{Strict Certainty Thresholds.} The system enforces the following hard constraints:
+\begin{itemize}
+    \item \textbf{No evidence found:} $c \le 0.3$.
+    \item \textbf{Internal-only reference:} if evidence consists solely of internal material (e.g., an internal pitch deck) without public corroboration, the verdict is forced to \texttt{INSUFFICIENT\_EVIDENCE} and $c \le 0.4$.
+    \item \textbf{Single source / interdependent sources:} $c \le 0.7$.
+    \item \textbf{High confidence:} $c \ge 0.8$ requires at least two independent primary sources.
+\end{itemize}
+
+\textbf{Independence Definition.} Official website pages, press releases, and founder interviews are explicitly classified as \emph{dependent} sources and cannot be used alone to justify high-confidence support.
+
+\subsection{Quality Assessment (Critic)}
+\label{app:critic}
+
+\textbf{Goal.} Critically evaluate verification iterations and produce feedback to guide iterative refinement.
+
+\textbf{Settings.} The critic module is executed via \texttt{gpt-5.2-pro} with temperature $T=0.1$ for consistent analytical feedback.
+
+\textbf{Structured Scoring.} The critic assigns continuous scores in $[0,1]$ along three dimensions:
+\begin{enumerate}
+    \item \emph{Reasoning Quality:} whether the reasoning is logically sound;
+    \item \emph{Source Relevance:} whether sources are credible and independent;
+    \item \emph{Certainty Calibration:} whether the reported certainty matches the enforced thresholds.
+\end{enumerate}
+
+\textbf{Output Categories and Actions.} Scores are mapped to five qualitative categories:
+\textsc{EXCELLENT}, \textsc{GOOD}, \textsc{ACCEPTABLE}, \textsc{POOR}, and \textsc{CRITICAL}.
+If the critic detects systematic failure modes, it outputs explicit action items (e.g., ``exclude press releases''), which are enforced in the subsequent iteration.
+
+\subsection{Robustness Testing Variations}
+\label{app:robustness}
+
+\textbf{Goal.} Test verdict stability across different analytical personas and flag unstable verifications.
+
+\textbf{Agreement Threshold.} A verification is flagged as unstable and may be forced to \texttt{INSUFFICIENT\_EVIDENCE} if the inter-variation agreement rate is below $0.67$ (e.g., fewer than two agreeing verdicts out of three prompt variations).
+
+\textbf{Prompt Personas.} Robustness testing uses three prompt variants:
+\begin{itemize}
+    \item \textbf{Neutral (Default):} balanced verification under the standard rules above.
+    \item \textbf{Evidence-Focused:} \texttt{SUPPORTED} requires $\ge 3$ independent high-quality sources; fewer than two sources default to \texttt{INSUFFICIENT\_EVIDENCE}.
+    \item \textbf{Skeptical:} default stance is doubt; high confidence requires $\ge 4$ independent sources, and single-source verifications are penalized with $c \le 0.4$.
+\end{itemize}
+
+\subsection{Metadata Evaluation}
+\label{app:metadata_eval}
+
+Pipeline-extracted corporate metadata is validated against CRM ground truth (Salesforce) using token-level fuzzy string matching. A strict similarity threshold of $0.85$ is applied to tolerate benign lexical variations (e.g., ``Inc.'' vs.\ ``Incorporated''). Matching performance is reported using precision and recall.
+
+
+% ================================
+

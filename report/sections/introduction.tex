@@ -1,0 +1,43 @@
+\section{Introduction}
+
+Venture capital (VC) investment decisions involve evaluating thousands of opportunities annually. Each requires rigorous due diligence (DD) to validate assertions made in pitch decks, financial models, and technical whitepapers. These claims -- ranging from investment viability to costs and potential returns -- are part of the investment thesis. Currently, verification is a labor-intensive, manual process in which analysts investigate identified claims against external knowledge sources, such as news archives, corporate filings, and industry reports.
+\\
+\\
+This manual paradigm has the following systemic limitations. 
+First, it is resource-intensive. Thoroughly verifying a single document may require multiple targeted searches and the synthesis of disparate documents. Such an approach can create a bottleneck, forcing firms to limit the depth of their diligence. 
+Second, it is susceptible to inconsistency. Verification standards often vary between analysts, leading to different risk assessments of the same claim. 
+Third, it does not scale. As document volume increases, the fixed capacity of human analyst teams limits the number of documents they can process.
+Finally, it faces latency risks. Static diligence reports rapidly become obsolete; a manual process cannot continuously monitor for new information that might invalidate previous verification results.
+\\
+\\
+Recent advancements in Large Language Models (LLMs) and Retrieval-Augmented Generation (RAG) offer an opportunity to automate extraction and verification processes. However, using general-purpose RAG systems for financial due diligence poses challenges. The cost of a "false positive" (hallucinating a verification) is substantially higher in an investment context. Furthermore, claims are domain-specific, requiring a deeper semantic understanding (e.g., the difference between a "signed partnership" and a "letter of intent").
+\\
+\\
+The proposed solution is not intended as another domain-adapted RAG system. While prior work primarily optimizes for coverage or factual recall, our design targets high-stakes venture capital due diligence, where the cost of false positives can be substantial. As a result, we adopt a different perspective, treating abstention as a safety mechanism rather than a failure mode.
+\\
+\\
+Concretely, the system enforces strict evidence independence and confidence calibration rules, prioritizing cautious verification when the corroboration is weak, dependent, or ambiguous. This logic is supposed to reflect the standards applied by the professionals, for whom an unverified claim is preferable to an incorrectly validated one. Accordingly, our solution is best understood as a calibrated decision-support architecture for high-stakes settings, rather than a generic fact-checking or question-answering pipeline. In this work, we present \textsc{VentureTruth}, an automated pipeline that bridges this gap. Unlike generic verification systems, our approach incorporates rigorous \textbf{Certainty Calibration}, \textbf{Iterative Quality Refinement}, and \textbf{Robustness Testing} to ensure that automated verdicts meet the investing standards.
+\\
+\\
+The main contributions of this paper are as follows:
+\begin{enumerate}
+    \item We introduce a specialized verification logic that prioritizes safety over recall, explicitly capping confidence for single-source or dependent evidence to minimize hallucinations in investment contexts.
+    \item We implement a feedback loop in which a "Quality Assessor" agent critiques verification reasoning and provides specific improvement suggestions, allowing the system to dynamically refine its search strategy.
+    \item We demonstrate a method for stress-testing verdicts using "Sceptical" and "Evidence-Focused" prompt variations, ensuring that system judgments are stable and not artifacts of prompt phrasing.
+    \item Beyond binary true/false verdicts, our pipeline classifies the \textit{type} and \textit{independence} of supporting evidence (e.g., differentiating between a company press release and a regulatory filing), directly mapping verification quality to investment risk.
+\end{enumerate}
+
+\paragraph{Research Questions (RQ)}. To compare the performance of the proposed solution with that of the human-like, we defined a set of research questions that will serve as the basis for the comparison.
+\\
+\\
+\textbf{RQ1: Agreement with Expert Judgment}.
+How closely do the \textsc{VentureTruth}'s verdicts correspond with human analyst annotations across the three-way label set (\texttt{SUPPORTED},\texttt{CONTRADICTED}, \allowbreak \texttt{INSUFFICIENT\_EVIDENCE})?
+\\
+\\
+\textbf{RQ2: Calibration and Abstention under Uncertainty}.
+When evidence is weak or missing, does the system appropriately abstain (i.e., predict \texttt{INSUFFICIENT\_EVIDENCE}) and avoid overconfident decisions compared to human baselines?
+
+\paragraph{Author Contributions.}
+Mykhailo initiated the project by establishing the initial codebase structure and implementing the search engine module.
+Yufei led the claim extraction component and designed the overall system architecture, including the quality-checking pipeline and the testing framework.
+Zekai further modularized the codebase and refactored the system into an iterative workflow to enable repeated refinement and evaluation.
